@@ -97,7 +97,7 @@ export function JobCostsSection(props: {
           {(costsQuery.data ?? []).map((item: any) => (
             <JobCostEntryCard
               key={item.id}
-              item={item}
+              entry={item}
               onDelete={(id) => deleteMutation.mutate(id)}
             />
           ))}

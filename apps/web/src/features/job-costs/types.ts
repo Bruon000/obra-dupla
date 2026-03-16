@@ -3,14 +3,22 @@ export type JobCostPayer = "BRUNO" | "ROBERTO" | "CAIXA" | "OUTRO";
 
 export type JobCostAttachmentView = {
   id: string;
+  jobCostEntryId: string;
   fileName: string;
   mimeType: string;
-  storageType: "inline" | "local" | "remote";
+  storageType: string;
   fileDataBase64?: string | null;
   fileUrl?: string | null;
   thumbnailBase64?: string | null;
-  notes?: string | null;
-  createdAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+};
+
+export type JobCostUserRef = {
+  id: string;
+  name: string;
+  email: string;
 };
 
 export type JobCostEntryView = {
@@ -18,26 +26,25 @@ export type JobCostEntryView = {
   companyId: string;
   jobSiteId: string;
   date: string;
-  source: JobCostSource;
+  source: "OBRA" | "LEGAL" | "LABOR";
   category: string;
   description: string;
   weekLabel?: string | null;
   quantity?: number | null;
   unitPrice?: number | null;
-  total: number;
-  payer: JobCostPayer;
-  supplierName?: string | null;
-  documentNumber?: string | null;
+  totalAmount: number;
+  payer: "BRUNO" | "ROBERTO" | "CAIXA" | "OUTRO";
+  supplier?: string | null;
+  invoiceNumber?: string | null;
   paymentMethod?: string | null;
   notes?: string | null;
-  attachments?: JobCostAttachmentView[];
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
   deletedAt?: string | null;
-
-  createdByUser?: { id: string; name?: string | null; email?: string | null } | null;
-  updatedByUser?: { id: string; name?: string | null; email?: string | null } | null;
-  deletedByUser?: { id: string; name?: string | null; email?: string | null } | null;
+  createdByUser?: JobCostUserRef | null;
+  updatedByUser?: JobCostUserRef | null;
+  deletedByUser?: JobCostUserRef | null;
+  attachments?: JobCostAttachmentView[];
 };
 
 export type JobCostsSummary = {

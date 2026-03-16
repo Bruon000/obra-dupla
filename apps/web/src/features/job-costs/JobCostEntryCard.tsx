@@ -5,9 +5,10 @@ import { JobCostEntryView } from "./types";
 
 type Props = {
   entry: JobCostEntryView;
+  onDelete?: (id: string) => void;
 };
 
-export function JobCostEntryCard({ entry }: Props) {
+export function JobCostEntryCard({ entry, onDelete }: Props) {
   const hasAttachments = !!entry.attachments?.length;
 
   return (
@@ -53,14 +54,14 @@ export function JobCostEntryCard({ entry }: Props) {
             <Typography variant="body2" color="text.secondary">
               Data: {formatDate(entry.date)}
             </Typography>
-            {!!entry.supplierName && (
+            {!!entry.supplier && (
               <Typography variant="body2" color="text.secondary">
-                Fornecedor: {entry.supplierName}
+                Fornecedor: {entry.supplier}
               </Typography>
             )}
-            {!!entry.documentNumber && (
+            {!!entry.invoiceNumber && (
               <Typography variant="body2" color="text.secondary">
-                Documento: {entry.documentNumber}
+                Documento: {entry.invoiceNumber}
               </Typography>
             )}
             {!!entry.notes && (
@@ -72,10 +73,10 @@ export function JobCostEntryCard({ entry }: Props) {
 
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.5 }}>
             <Typography variant="caption" color="text.secondary">
-              Qtd: {entry.quantity ?? 1} • Unit.: {formatCurrency(entry.unitPrice ?? entry.total)}
+              Qtd: {entry.quantity ?? 1} • Unit.: {formatCurrency(entry.unitPrice ?? entry.totalAmount)}
             </Typography>
             <Typography variant="subtitle1" fontWeight={800}>
-              {formatCurrency(entry.total)}
+              {formatCurrency(entry.totalAmount)}
             </Typography>
           </Stack>
 
@@ -95,9 +96,24 @@ export function JobCostEntryCard({ entry }: Props) {
                 Excluído por: {entry.deletedByUser.name}
               </Typography>
             ) : null}
-            <Button variant="text" size="small">
-              Ver histórico
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button variant="text" size="small">
+                Ver histórico
+              </Button>
+              {!entry.deletedAt && onDelete ? (
+                <Button
+                  color="error"
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    const confirmed = window.confirm("Deseja realmente excluir este lançamento?");
+                    if (confirmed) onDelete(entry.id);
+                  }}
+                >
+                  Excluir
+                </Button>
+              ) : null}
+            </Stack>
           </Stack>
         </Stack>
       </CardContent>

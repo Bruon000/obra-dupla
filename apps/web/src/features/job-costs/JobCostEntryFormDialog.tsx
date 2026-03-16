@@ -77,7 +77,10 @@ export function JobCostEntryFormDialog(props: {
     try {
       const quantity = Number(form.quantity || 0);
       const unitPrice = Number(form.unitPrice || 0);
-      const computedTotal = Number(form.total || quantity * unitPrice || 0);
+      const computedTotal =
+        Number(form.total || 0) > 0
+          ? Number(form.total)
+          : Number((quantity * unitPrice).toFixed(2));
 
       const attachments = await Promise.all(form.attachments.map(fileToAttachmentPayload));
 
@@ -89,14 +92,15 @@ export function JobCostEntryFormDialog(props: {
           source: form.source,
           category: form.category,
           description: form.description,
-          quantity,
-          unitPrice,
-          total: computedTotal,
+          quantity: quantity || null,
+          unitPrice: unitPrice || null,
+          totalAmount: computedTotal,
           payer: form.payer,
-          supplierName: form.supplierName || null,
-          documentNumber: form.documentNumber || null,
+          supplier: form.supplierName || null,
+          invoiceNumber: form.documentNumber || null,
           paymentMethod: form.paymentMethod || null,
           notes: form.notes || null,
+          weekLabel: null,
         },
         attachments,
       );

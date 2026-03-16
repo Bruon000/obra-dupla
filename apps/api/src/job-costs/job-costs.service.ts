@@ -20,6 +20,7 @@ export class JobCostsService {
     return this.prisma.jobCostEntry.findMany({
       where: {
         jobSiteId: query.jobSiteId,
+        deletedAt: null,
         ...(query.source ? { source: query.source } : {}),
         ...(query.payer ? { payer: query.payer } : {}),
         ...(query.category ? { category: query.category } : {}),
@@ -208,12 +209,15 @@ export class JobCostsService {
 
   async summary(jobSiteId: string) {
     const entries = await this.prisma.jobCostEntry.findMany({
-      where: { jobSiteId },
+      where: {
+        jobSiteId,
+        deletedAt: null,
+      },
       select: {
         id: true,
         source: true,
         payer: true,
-        total: true,
+        totalAmount: true,
       },
     });
 
@@ -233,7 +237,7 @@ export class JobCostsService {
     let grandTotal = 0;
 
     for (const entry of entries) {
-      const total = Number(entry.total ?? 0);
+      const total = Number(entry.totalAmount ?? 0);
       grandTotal += total;
 
       if (!bySource[entry.source]) bySource[entry.source] = { total: 0, count: 0 };
