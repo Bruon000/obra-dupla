@@ -1,4 +1,5 @@
-import { Card, CardContent, Grid, Stack, Typography } from "@mui/material";
+import React from "react";
+import { Card, CardContent, Chip, Grid, Paper, Stack, Typography } from "@mui/material";
 import { JobCostsSummary } from "./types";
 import { formatCurrency } from "./utils";
 
@@ -25,8 +26,40 @@ function MetricCard(props: { title: string; value: number; subtitle?: string }) 
 }
 
 export function JobCostsSummaryCards({ summary }: { summary?: JobCostsSummary }) {
+  if (!summary) return null;
+
+  const brunoDiff = summary.settlement?.bruno?.delta ?? 0;
+  const robertoDiff = summary.settlement?.roberto?.delta ?? 0;
+
   return (
     <Grid container spacing={1.5}>
+      <Grid item xs={12}>
+        <Paper sx={{ p: 2, borderRadius: 3 }}>
+          <Stack spacing={1}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Acerto entre sócios
+            </Typography>
+            <Typography variant="h6" fontWeight={800}>
+              Total geral: {formatCurrency(summary.totals?.grand ?? 0)}
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Chip label={`Bruno pagou ${formatCurrency(summary.settlement?.bruno?.paid ?? 0)}`} />
+              <Chip label={`Roberto pagou ${formatCurrency(summary.settlement?.roberto?.paid ?? 0)}`} />
+            </Stack>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Chip
+                color={brunoDiff > 0 ? "success" : brunoDiff < 0 ? "warning" : "default"}
+                label={`Bruno saldo ${formatCurrency(brunoDiff)}`}
+              />
+              <Chip
+                color={robertoDiff > 0 ? "success" : robertoDiff < 0 ? "warning" : "default"}
+                label={`Roberto saldo ${formatCurrency(robertoDiff)}`}
+              />
+            </Stack>
+          </Stack>
+        </Paper>
+      </Grid>
+
       <Grid size={{ xs: 12, sm: 6 }}>
         <MetricCard title="Total da obra" value={summary?.totals.grand ?? 0} />
       </Grid>

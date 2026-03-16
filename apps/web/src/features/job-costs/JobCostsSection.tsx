@@ -3,9 +3,10 @@ import {
   Alert,
   Box,
   CircularProgress,
-  Fab,
+  Paper,
   Stack,
   Typography,
+  Button,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import {
@@ -42,11 +43,43 @@ export function JobCostsSection(props: {
   }
 
   return (
-    <Box sx={{ pb: 10 }}>
-      <Stack spacing={2}>
-        <Typography variant="h6" fontWeight={800}>
-          Custos da obra
-        </Typography>
+    <Box sx={{ pb: 2 }}>
+      <Stack spacing={2.5}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            spacing={2}
+          >
+            <Typography variant="h6" fontWeight={700}>
+              Custos da obra
+            </Typography>
+
+            <Button
+              variant="contained"
+              size="large"
+              startIcon={<AddIcon />}
+              onClick={() => setOpen(true)}
+              sx={{
+                minHeight: 48,
+                borderRadius: 999,
+                px: 2,
+                fontWeight: 700,
+              }}
+            >
+              Adicionar gasto
+            </Button>
+          </Stack>
+        </Paper>
 
         <JobCostsSummaryCards summary={summaryQuery.data} />
 
@@ -69,23 +102,15 @@ export function JobCostsSection(props: {
             />
           ))}
         </Stack>
+
+        <JobCostEntryFormDialog
+          open={open}
+          onClose={() => setOpen(false)}
+          companyId={props.companyId}
+          jobSiteId={props.jobSiteId}
+          onSubmit={handleCreate}
+        />
       </Stack>
-
-      <Fab
-        color="primary"
-        onClick={() => setOpen(true)}
-        sx={{ position: "fixed", right: 16, bottom: 16 }}
-      >
-        <AddIcon />
-      </Fab>
-
-      <JobCostEntryFormDialog
-        open={open}
-        onClose={() => setOpen(false)}
-        companyId={props.companyId}
-        jobSiteId={props.jobSiteId}
-        onSubmit={handleCreate}
-      />
     </Box>
   );
 }

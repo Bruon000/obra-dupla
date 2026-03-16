@@ -12,6 +12,23 @@ import {
 } from "@mui/material";
 import { fileToAttachmentPayload } from "./utils";
 
+type FormValues = {
+  date: string;
+  source: "OBRA" | "LEGAL" | "LABOR";
+  category: string;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  total: string;
+  payer: "BRUNO" | "ROBERTO" | "CAIXA" | "OUTRO";
+  supplierName: string;
+  documentNumber: string;
+  paymentMethod: string;
+  notes: string;
+  invoiceNumber: string;
+  attachments: File[];
+};
+
 const sourceOptions = [
   { value: "OBRA", label: "Obra / Material" },
   { value: "LEGAL", label: "Legal / Taxas" },
@@ -33,7 +50,7 @@ export function JobCostEntryFormDialog(props: {
   onSubmit: (payload: Record<string, unknown>, files: Array<Record<string, unknown>>) => Promise<void>;
 }) {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormValues>({
     date: today,
     source: "OBRA",
     category: "",
@@ -46,8 +63,9 @@ export function JobCostEntryFormDialog(props: {
     documentNumber: "",
     paymentMethod: "",
     notes: "",
+    invoiceNumber: "",
+    attachments: [],
   });
-  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
   function patch<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
@@ -61,7 +79,7 @@ export function JobCostEntryFormDialog(props: {
       const unitPrice = Number(form.unitPrice || 0);
       const computedTotal = Number(form.total || quantity * unitPrice || 0);
 
-      const attachments = await Promise.all(files.map(fileToAttachmentPayload));
+      const attachments = await Promise.all(form.attachments.map(fileToAttachmentPayload));
 
       await props.onSubmit(
         {
@@ -83,7 +101,6 @@ export function JobCostEntryFormDialog(props: {
         attachments,
       );
       props.onClose();
-      setFiles([]);
       setForm({
         date: today,
         source: "OBRA",
@@ -97,6 +114,8 @@ export function JobCostEntryFormDialog(props: {
         documentNumber: "",
         paymentMethod: "",
         notes: "",
+        invoiceNumber: "",
+        attachments: [],
       });
     } finally {
       setSaving(false);
@@ -165,11 +184,11 @@ export function JobCostEntryFormDialog(props: {
                 type="file"
                 accept="image/*,application/pdf"
                 multiple
-                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                onChange={(e) => patch("attachments", Array.from(e.target.files ?? []))}
               />
             </Button>
             <Stack spacing={0.5} sx={{ mt: 1 }}>
-              {files.map((file) => (
+              {form.attachments.map((file) => (
                 <Box key={`${file.name}-${file.size}`}>{file.name}</Box>
               ))}
             </Stack>

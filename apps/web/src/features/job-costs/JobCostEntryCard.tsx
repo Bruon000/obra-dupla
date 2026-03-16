@@ -1,79 +1,76 @@
-import {
-  Card,
-  CardContent,
-  Chip,
-  IconButton,
-  Stack,
-  Typography,
-} from "@mui/material";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
-import { JobCostEntryView } from "./types";
+import React from "react";
+import { Card, CardContent, Chip, Stack, Typography, Divider } from "@mui/material";
 import { formatCurrency, formatDate } from "./utils";
+import { JobCostEntryView } from "./types";
 
-function sourceLabel(source: JobCostEntryView["source"]) {
-  if (source === "OBRA") return "Obra";
-  if (source === "LEGAL") return "Legal";
-  return "Mão de obra";
-}
+type Props = {
+  entry: JobCostEntryView;
+};
 
-export function JobCostEntryCard(props: {
-  item: JobCostEntryView;
-  onDelete?: (id: string) => void;
-}) {
-  const hasReceipt = Boolean(props.item.attachments?.length);
+export function JobCostEntryCard({ entry }: Props) {
+  const hasAttachments = !!entry.attachments?.length;
 
   return (
-    <Card sx={{ borderRadius: 3 }}>
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 3,
+        borderColor: "divider",
+        overflow: "hidden",
+      }}
+    >
       <CardContent>
         <Stack spacing={1.25}>
-          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-            <Stack spacing={0.5} minWidth={0}>
-              <Typography variant="subtitle2" fontWeight={700}>
-                {props.item.description}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {formatDate(props.item.date)} • {props.item.category}
-              </Typography>
-            </Stack>
-            {props.onDelete ? (
-              <IconButton size="small" onClick={() => props.onDelete?.(props.item.id)}>
-                <DeleteOutlineIcon fontSize="small" />
-              </IconButton>
-            ) : null}
+          <Stack spacing={0.5}>
+            <Typography variant="subtitle2" fontWeight={700}>
+              {entry.description}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {formatDate(entry.date)} • {entry.category}
+            </Typography>
           </Stack>
 
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip size="small" label={sourceLabel(props.item.source)} />
-            <Chip size="small" label={`Pagou: ${props.item.payer}`} variant="outlined" />
+          <Stack direction="row" spacing={1} sx={{ mt: 1, mb: 1.5, flexWrap: "wrap" }}>
+            <Chip label={entry.source} size="small" />
+            <Chip label={entry.category} size="small" variant="outlined" />
+            <Chip label={`Pago por ${entry.payer}`} size="small" color="primary" variant="outlined" />
             <Chip
+              label={hasAttachments ? "Com comprovante" : "Sem comprovante"}
               size="small"
-              color={hasReceipt ? "success" : "default"}
-              icon={<ReceiptLongOutlinedIcon />}
-              label={hasReceipt ? "Com comprovante" : "Sem comprovante"}
+              color={hasAttachments ? "success" : "default"}
+              variant={hasAttachments ? "filled" : "outlined"}
             />
           </Stack>
 
+          <Divider sx={{ my: 1.5 }} />
+
           <Stack spacing={0.5}>
-            {props.item.supplierName ? (
-              <Typography variant="body2">Fornecedor: {props.item.supplierName}</Typography>
-            ) : null}
-            {props.item.documentNumber ? (
-              <Typography variant="body2">Documento: {props.item.documentNumber}</Typography>
-            ) : null}
-            {props.item.notes ? (
+            <Typography variant="body2" color="text.secondary">
+              Data: {formatDate(entry.date)}
+            </Typography>
+            {!!entry.supplierName && (
               <Typography variant="body2" color="text.secondary">
-                {props.item.notes}
+                Fornecedor: {entry.supplierName}
               </Typography>
-            ) : null}
+            )}
+            {!!entry.documentNumber && (
+              <Typography variant="body2" color="text.secondary">
+                Documento: {entry.documentNumber}
+              </Typography>
+            )}
+            {!!entry.notes && (
+              <Typography variant="body2" color="text.secondary">
+                Obs: {entry.notes}
+              </Typography>
+            )}
           </Stack>
 
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.5 }}>
             <Typography variant="caption" color="text.secondary">
-              Qtd: {props.item.quantity ?? 1} • Unit.: {formatCurrency(props.item.unitPrice ?? props.item.total)}
+              Qtd: {entry.quantity ?? 1} • Unit.: {formatCurrency(entry.unitPrice ?? entry.total)}
             </Typography>
             <Typography variant="subtitle1" fontWeight={800}>
-              {formatCurrency(props.item.total)}
+              {formatCurrency(entry.total)}
             </Typography>
           </Stack>
         </Stack>
