@@ -9,9 +9,9 @@ export type JobCostEntryRow = BaseRow & {
   category: string;
   description: string;
   weekLabel?: string | null;
-  quantity: number;
-  unitPrice: number;
-  total: number;
+  quantity?: number | null;
+  unitPrice?: number | null;
+  totalAmount: number;
   payer: string;
   supplier?: string | null;
   paymentMethod?: string | null;
@@ -23,6 +23,7 @@ export const jobCostEntriesRepo = makeRepo<JobCostEntryRow>("jobCostEntries");
 
 export async function removeJobCostEntryCascade(id: string) {
   const attachments = await db.jobCostAttachments.where("jobCostEntryId").equals(id).toArray();
+  const now = new Date().toISOString();
 
   await db.transaction("rw", db.jobCostEntries, db.jobCostAttachments, db.deletes, async () => {
     for (const attachment of attachments) {
@@ -31,10 +32,12 @@ export async function removeJobCostEntryCascade(id: string) {
         id: crypto.randomUUID(),
         entity: "jobCostAttachments",
         entityId: attachment.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        deletedAt: now,
+        createdAt: now,
+        updatedAt: now,
         version: 1,
-      } as any);
+        pendingSync: 1,
+      });
     }
 
     await db.jobCostEntries.delete(id);
@@ -42,9 +45,11 @@ export async function removeJobCostEntryCascade(id: string) {
       id: crypto.randomUUID(),
       entity: "jobCostEntries",
       entityId: id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      deletedAt: now,
+      createdAt: now,
+      updatedAt: now,
       version: 1,
-    } as any);
+      pendingSync: 1,
+    });
   });
 }

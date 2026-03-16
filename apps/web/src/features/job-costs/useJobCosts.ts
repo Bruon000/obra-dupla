@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchActivityFeed } from "@/api/activityFeed";
 import {
   createJobCost,
   createJobCostAttachment,
@@ -8,10 +9,34 @@ import {
   updateJobCost,
 } from "../../api/jobCosts";
 
-export function useJobCosts(jobSiteId: string) {
+type JobCostFilters = {
+  source?: string;
+  payer?: string;
+  category?: string;
+};
+
+export function useJobCostHistory(entryId: string, open: boolean) {
   return useQuery({
-    queryKey: ["job-costs", jobSiteId],
-    queryFn: () => fetchJobCosts({ jobSiteId }),
+    queryKey: ["job-cost-history", entryId],
+    queryFn: () =>
+      fetchActivityFeed({
+        entityType: "JobCostEntry",
+        entityId: entryId,
+      }),
+    enabled: open && Boolean(entryId),
+  });
+}
+
+export function useJobCosts(jobSiteId: string, filters?: JobCostFilters) {
+  return useQuery({
+    queryKey: ["job-costs", jobSiteId, filters?.source ?? "", filters?.payer ?? "", filters?.category ?? ""],
+    queryFn: () =>
+      fetchJobCosts({
+        jobSiteId,
+        source: filters?.source || undefined,
+        payer: filters?.payer || undefined,
+        category: filters?.category || undefined,
+      }),
     enabled: Boolean(jobSiteId),
   });
 }

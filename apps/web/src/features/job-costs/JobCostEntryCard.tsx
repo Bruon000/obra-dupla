@@ -2,17 +2,41 @@ import React from "react";
 import { Button, Card, CardContent, Chip, Stack, Typography, Divider } from "@mui/material";
 import { formatCurrency, formatDate } from "./utils";
 import { JobCostEntryView } from "./types";
+import { JobCostHistoryDialog } from "./JobCostHistoryDialog";
 
 type Props = {
   entry: JobCostEntryView;
   onDelete?: (id: string) => void;
 };
 
+function openAttachment(attachment: JobCostEntryView["attachments"][number]) {
+  if (attachment.fileUrl) {
+    window.open(attachment.fileUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  if (!attachment.fileDataBase64) return;
+
+  const mimeType = attachment.mimeType || "application/octet-stream";
+  const dataUrl = `data:${mimeType};base64,${attachment.fileDataBase64}`;
+  const newWindow = window.open("", "_blank", "noopener,noreferrer");
+  if (!newWindow) return;
+
+  if (mimeType.startsWith("image/")) {
+    newWindow.document.write(`<img src="${dataUrl}" style="max-width:100%;height:auto;" />`);
+    return;
+  }
+
+  newWindow.location.href = dataUrl;
+}
+
 export function JobCostEntryCard({ entry, onDelete }: Props) {
   const hasAttachments = !!entry.attachments?.length;
+  const [historyOpen, setHistoryOpen] = React.useState(false);
 
   return (
-    <Card
+    <>
+      <Card
       variant="outlined"
       sx={{
         borderRadius: 3,
@@ -69,6 +93,25 @@ export function JobCostEntryCard({ entry, onDelete }: Props) {
                 Obs: {entry.notes}
               </Typography>
             )}
+            {hasAttachments ? (
+              <Stack spacing={0.75} sx={{ pt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Comprovantes:
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {entry.attachments?.map((attachment) => (
+                    <Button
+                      key={attachment.id}
+                      size="small"
+                      variant="outlined"
+                      onClick={() => openAttachment(attachment)}
+                    >
+                      {attachment.fileName}
+                    </Button>
+                  ))}
+                </Stack>
+              </Stack>
+            ) : null}
           </Stack>
 
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.5 }}>
@@ -97,7 +140,7 @@ export function JobCostEntryCard({ entry, onDelete }: Props) {
               </Typography>
             ) : null}
             <Stack direction="row" spacing={1}>
-              <Button variant="text" size="small">
+              <Button variant="text" size="small" onClick={() => setHistoryOpen(true)}>
                 Ver histórico
               </Button>
               {!entry.deletedAt && onDelete ? (
@@ -118,5 +161,12 @@ export function JobCostEntryCard({ entry, onDelete }: Props) {
         </Stack>
       </CardContent>
     </Card>
+
+      <JobCostHistoryDialog
+        entryId={entry.id}
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+      />
+    </>
   );
 }

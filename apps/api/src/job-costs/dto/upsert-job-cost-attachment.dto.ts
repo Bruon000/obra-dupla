@@ -8,9 +8,6 @@ export class UpsertJobCostAttachmentDto {
   id?: string;
 
   @IsUUID()
-  companyId!: string;
-
-  @IsUUID()
   jobCostEntryId!: string;
 
   @IsString()

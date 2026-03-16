@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Company {
@@ -20,6 +19,7 @@ model Company {
   quotes        Quote[]
   jobCostEntries       JobCostEntry[]
   jobCostAttachments   JobCostAttachment[]
+  activityEvents       ActivityEvent[]
   customFields  CustomField[]
   workflows     Workflow[]
   templates     Template[]
@@ -47,6 +47,8 @@ model User {
   createdJobCostAttachments JobCostAttachment[] @relation("JobCostAttachmentCreatedBy")
   updatedJobCostAttachments JobCostAttachment[] @relation("JobCostAttachmentUpdatedBy")
   deletedJobCostAttachments JobCostAttachment[] @relation("JobCostAttachmentDeletedBy")
+
+  activityEvents ActivityEvent[]
 }
 
 model Client {
@@ -194,4 +196,24 @@ model JobCostAttachment {
   @@index([createdByUserId])
   @@index([updatedByUserId])
   @@index([deletedByUserId])
+}
+
+model ActivityEvent {
+  id         String   @id @default(uuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  eventType  String
+  entityType String
+  entityId   String
+  payload    Json?
+
+  createdAt  DateTime @default(now())
+
+  @@index([companyId, entityType, entityId, createdAt])
+  @@index([companyId, createdAt])
+  @@index([userId])
 }

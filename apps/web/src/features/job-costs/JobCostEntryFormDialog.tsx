@@ -19,13 +19,12 @@ type FormValues = {
   description: string;
   quantity: string;
   unitPrice: string;
-  total: string;
+  totalAmount: string;
   payer: "BRUNO" | "ROBERTO" | "CAIXA" | "OUTRO";
-  supplierName: string;
-  documentNumber: string;
+  supplier: string;
+  invoiceNumber: string;
   paymentMethod: string;
   notes: string;
-  invoiceNumber: string;
   attachments: File[];
 };
 
@@ -57,13 +56,12 @@ export function JobCostEntryFormDialog(props: {
     description: "",
     quantity: "1",
     unitPrice: "",
-    total: "",
+    totalAmount: "",
     payer: "BRUNO",
-    supplierName: "",
-    documentNumber: "",
+    supplier: "",
+    invoiceNumber: "",
     paymentMethod: "",
     notes: "",
-    invoiceNumber: "",
     attachments: [],
   });
   const [saving, setSaving] = useState(false);
@@ -78,8 +76,8 @@ export function JobCostEntryFormDialog(props: {
       const quantity = Number(form.quantity || 0);
       const unitPrice = Number(form.unitPrice || 0);
       const computedTotal =
-        Number(form.total || 0) > 0
-          ? Number(form.total)
+        Number(form.totalAmount || 0) > 0
+          ? Number(form.totalAmount)
           : Number((quantity * unitPrice).toFixed(2));
 
       const attachments = await Promise.all(form.attachments.map(fileToAttachmentPayload));
@@ -92,15 +90,15 @@ export function JobCostEntryFormDialog(props: {
           source: form.source,
           category: form.category,
           description: form.description,
-          quantity: quantity || null,
-          unitPrice: unitPrice || null,
+          weekLabel: null,
+          quantity: quantity > 0 ? quantity : null,
+          unitPrice: unitPrice > 0 ? unitPrice : null,
           totalAmount: computedTotal,
           payer: form.payer,
-          supplier: form.supplierName || null,
-          invoiceNumber: form.documentNumber || null,
+          supplier: form.supplier || null,
+          invoiceNumber: form.invoiceNumber || null,
           paymentMethod: form.paymentMethod || null,
           notes: form.notes || null,
-          weekLabel: null,
         },
         attachments,
       );
@@ -112,13 +110,12 @@ export function JobCostEntryFormDialog(props: {
         description: "",
         quantity: "1",
         unitPrice: "",
-        total: "",
+        totalAmount: "",
         payer: "BRUNO",
-        supplierName: "",
-        documentNumber: "",
+        supplier: "",
+        invoiceNumber: "",
         paymentMethod: "",
         notes: "",
-        invoiceNumber: "",
         attachments: [],
       });
     } finally {
@@ -158,7 +155,7 @@ export function JobCostEntryFormDialog(props: {
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField label="Quantidade" value={form.quantity} onChange={(e) => patch("quantity", e.target.value)} fullWidth />
             <TextField label="Valor unitário" value={form.unitPrice} onChange={(e) => patch("unitPrice", e.target.value)} fullWidth />
-            <TextField label="Total" value={form.total} onChange={(e) => patch("total", e.target.value)} fullWidth />
+            <TextField label="Total" value={form.totalAmount} onChange={(e) => patch("totalAmount", e.target.value)} fullWidth />
           </Stack>
 
           <TextField
@@ -175,8 +172,8 @@ export function JobCostEntryFormDialog(props: {
             ))}
           </TextField>
 
-          <TextField label="Fornecedor" value={form.supplierName} onChange={(e) => patch("supplierName", e.target.value)} fullWidth />
-          <TextField label="Número da nota/comprovante" value={form.documentNumber} onChange={(e) => patch("documentNumber", e.target.value)} fullWidth />
+          <TextField label="Fornecedor" value={form.supplier} onChange={(e) => patch("supplier", e.target.value)} fullWidth />
+          <TextField label="Número da nota/comprovante" value={form.invoiceNumber} onChange={(e) => patch("invoiceNumber", e.target.value)} fullWidth />
           <TextField label="Forma de pagamento" value={form.paymentMethod} onChange={(e) => patch("paymentMethod", e.target.value)} fullWidth />
           <TextField label="Observações" value={form.notes} onChange={(e) => patch("notes", e.target.value)} multiline minRows={3} fullWidth />
 

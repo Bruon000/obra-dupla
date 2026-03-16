@@ -8,13 +8,13 @@ export class JobCostsController {
   constructor(private readonly jobCostsService: JobCostsService) {}
 
   @Get()
-  async list(@Query() query: ListJobCostsDto) {
-    return this.jobCostsService.list(query);
+  async list(@Request() req: any, @Query() query: ListJobCostsDto) {
+    return this.jobCostsService.list(req.user.companyId, query);
   }
 
   @Get("summary")
-  async summary(@Query("jobSiteId") jobSiteId: string) {
-    return this.jobCostsService.summary(jobSiteId);
+  async summary(@Request() req: any, @Query("jobSiteId") jobSiteId: string) {
+    return this.jobCostsService.summary(req.user.companyId, jobSiteId);
   }
 
   @Post()

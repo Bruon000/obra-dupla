@@ -16,9 +16,10 @@ export class JobCostsService {
   private activityFeed: ActivityFeedService,
 ) {}
 
-  async list(query: ListJobCostsDto) {
+  async list(companyId: string, query: ListJobCostsDto) {
     return this.prisma.jobCostEntry.findMany({
       where: {
+        companyId,
         jobSiteId: query.jobSiteId,
         deletedAt: null,
         ...(query.source ? { source: query.source } : {}),
@@ -207,9 +208,10 @@ export class JobCostsService {
     return deleted;
   }
 
-  async summary(jobSiteId: string) {
+  async summary(companyId: string, jobSiteId: string) {
     const entries = await this.prisma.jobCostEntry.findMany({
       where: {
+        companyId,
         jobSiteId,
         deletedAt: null,
       },

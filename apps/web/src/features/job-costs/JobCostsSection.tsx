@@ -2,11 +2,13 @@ import { useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   CircularProgress,
+  MenuItem,
   Paper,
   Stack,
+  TextField,
   Typography,
-  Button,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import {
@@ -25,7 +27,15 @@ export function JobCostsSection(props: {
   jobSiteId: string;
 }) {
   const [open, setOpen] = useState(false);
-  const costsQuery = useJobCosts(props.jobSiteId);
+  const [source, setSource] = useState("");
+  const [payer, setPayer] = useState("");
+  const [category, setCategory] = useState("");
+
+  const costsQuery = useJobCosts(props.jobSiteId, {
+    source,
+    payer,
+    category,
+  });
   const summaryQuery = useJobCostsSummary(props.jobSiteId);
   const createMutation = useCreateJobCost(props.jobSiteId);
   const createAttachmentMutation = useCreateJobCostAttachment(props.jobSiteId);
@@ -78,6 +88,50 @@ export function JobCostsSection(props: {
             >
               Adicionar gasto
             </Button>
+          </Stack>
+        </Paper>
+
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Filtros
+            </Typography>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+              <TextField select label="Origem" value={source} onChange={(e) => setSource(e.target.value)} fullWidth>
+                <MenuItem value="">Todas</MenuItem>
+                <MenuItem value="OBRA">Obra / Material</MenuItem>
+                <MenuItem value="LABOR">Mão de obra</MenuItem>
+                <MenuItem value="LEGAL">Legal / Taxas</MenuItem>
+              </TextField>
+
+              <TextField select label="Quem pagou" value={payer} onChange={(e) => setPayer(e.target.value)} fullWidth>
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="BRUNO">Bruno</MenuItem>
+                <MenuItem value="ROBERTO">Roberto</MenuItem>
+                <MenuItem value="CAIXA">Caixa</MenuItem>
+                <MenuItem value="OUTRO">Outro</MenuItem>
+              </TextField>
+
+              <TextField
+                label="Categoria"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                fullWidth
+              />
+            </Stack>
+            <Stack direction="row" justifyContent="flex-end">
+              <Button onClick={() => { setSource(""); setPayer(""); setCategory(""); }}>
+                Limpar filtros
+              </Button>
+            </Stack>
           </Stack>
         </Paper>
 
