@@ -41,6 +41,11 @@ const ObraDetail = () => {
   const sale = SALES[id!];
   const members = MEMBERS.filter((m) => m.constructionId === id);
 
+  const totals = useMemo(
+    () => calculateObraTotals(expenses, legalCosts, laborEntries, members, sale),
+    [expenses, legalCosts, laborEntries, members, sale]
+  );
+
   if (!construction) {
     return (
       <MobileShell showNav={false}>
@@ -50,11 +55,6 @@ const ObraDetail = () => {
       </MobileShell>
     );
   }
-
-  const totals = useMemo(
-    () => calculateObraTotals(expenses, legalCosts, laborEntries, members, sale),
-    [expenses, legalCosts, laborEntries, members, sale]
-  );
 
   const handleAddExpense = (data: any) => {
     const newExpense: Expense = {
