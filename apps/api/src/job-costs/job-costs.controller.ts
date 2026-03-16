@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request } from "@nestjs/common";
 import { JobCostsService } from "./job-costs.service";
 import { ListJobCostsDto } from "./dto/list-job-costs.dto";
 import { UpsertJobCostDto } from "./dto/upsert-job-cost.dto";
@@ -18,17 +18,17 @@ export class JobCostsController {
   }
 
   @Post()
-  async create(@Body() dto: UpsertJobCostDto) {
-    return this.jobCostsService.create(dto);
+  create(@Request() req: any, @Body() dto: UpsertJobCostDto) {
+    return this.jobCostsService.create(req.user.companyId, req.user.id, dto);
   }
 
   @Patch(":id")
-  async update(@Param("id") id: string, @Body() dto: UpsertJobCostDto) {
-    return this.jobCostsService.update(id, dto);
+  update(@Request() req: any, @Param("id") id: string, @Body() dto: UpsertJobCostDto) {
+    return this.jobCostsService.update(req.user.companyId, req.user.id, id, dto);
   }
 
   @Delete(":id")
-  async remove(@Param("id") id: string) {
-    return this.jobCostsService.remove(id);
+  remove(@Request() req: any, @Param("id") id: string) {
+    return this.jobCostsService.remove(req.user.companyId, req.user.id, id);
   }
 }

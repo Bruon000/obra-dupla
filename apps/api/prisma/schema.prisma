@@ -28,9 +28,25 @@ model Company {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String
+
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdJobCostEntries   JobCostEntry[]        @relation("JobCostEntryCreatedBy")
+  updatedJobCostEntries   JobCostEntry[]        @relation("JobCostEntryUpdatedBy")
+  deletedJobCostEntries   JobCostEntry[]        @relation("JobCostEntryDeletedBy")
+
+  createdJobCostAttachments JobCostAttachment[] @relation("JobCostAttachmentCreatedBy")
+  updatedJobCostAttachments JobCostAttachment[] @relation("JobCostAttachmentUpdatedBy")
+  deletedJobCostAttachments JobCostAttachment[] @relation("JobCostAttachmentDeletedBy")
 }
 
 model Client {
@@ -96,68 +112,86 @@ model SyncConflict {
 }
 
 model JobCostEntry {
-  id              String      @id @default(uuid())
+  id              String    @id @default(uuid())
   companyId       String
-  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   jobSiteId       String
-  jobSite         JobSite     @relation(fields: [jobSiteId], references: [id], onDelete: Cascade)
+  jobSite         JobSite   @relation(fields: [jobSiteId], references: [id], onDelete: Cascade)
 
   date            DateTime
   source          String
   category        String
   description     String
   weekLabel       String?
-
-  quantity        Decimal     @default(1) @db.Decimal(12, 3)
-  unitPrice       Decimal     @default(0) @db.Decimal(14, 2)
-  total           Decimal     @default(0) @db.Decimal(14, 2)
-
+  quantity        Decimal?  @db.Decimal(14, 3)
+  unitPrice       Decimal?  @db.Decimal(14, 2)
+  totalAmount     Decimal   @db.Decimal(14, 2)
   payer           String
   supplier        String?
-  paymentMethod   String?
   invoiceNumber   String?
-  notes           String?     @db.Text
+  paymentMethod   String?
+  notes           String?
 
-  version         Int         @default(1)
+  version         Int       @default(1)
   deviceId        String?
   lastSyncedAt    DateTime?
   deletedAt       DateTime?
 
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdByUserId String?
+  updatedByUserId String?
+  deletedByUserId String?
+
+  createdByUser   User?     @relation("JobCostEntryCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser   User?     @relation("JobCostEntryUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  deletedByUser   User?     @relation("JobCostEntryDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
 
   attachments     JobCostAttachment[]
 
-  @@index([companyId, jobSiteId, date])
-  @@index([companyId, payer])
-  @@index([jobSiteId, deletedAt])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([companyId, jobSiteId, deletedAt])
+  @@index([companyId, payer, deletedAt])
+  @@index([companyId, source, deletedAt])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@index([deletedByUserId])
 }
 
 model JobCostAttachment {
-  id                String       @id @default(uuid())
-  companyId         String
-  company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id               String       @id @default(uuid())
+  companyId        String
+  company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  jobCostEntryId    String
-  jobCostEntry      JobCostEntry @relation(fields: [jobCostEntryId], references: [id], onDelete: Cascade)
+  jobCostEntryId   String
+  jobCostEntry     JobCostEntry @relation(fields: [jobCostEntryId], references: [id], onDelete: Cascade)
 
-  fileName          String
-  mimeType          String
-  fileSize          Int?
-  storageType       String       @default("inline")
-  fileDataBase64    String?      @db.Text
-  fileUrl           String?
-  thumbnailBase64   String?      @db.Text
+  fileName         String
+  mimeType         String
+  storageType      String
+  fileDataBase64   String?
+  fileUrl          String?
+  thumbnailBase64  String?
 
-  version           Int          @default(1)
-  deviceId          String?
-  lastSyncedAt      DateTime?
-  deletedAt         DateTime?
+  version          Int          @default(1)
+  deviceId         String?
+  lastSyncedAt     DateTime?
+  deletedAt        DateTime?
 
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdByUserId  String?
+  updatedByUserId  String?
+  deletedByUserId  String?
 
-  @@index([companyId, jobCostEntryId])
-  @@index([jobCostEntryId, deletedAt])
+  createdByUser    User?        @relation("JobCostAttachmentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser    User?        @relation("JobCostAttachmentUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  deletedByUser    User?        @relation("JobCostAttachmentDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([companyId, jobCostEntryId, deletedAt])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@index([deletedByUserId])
 }

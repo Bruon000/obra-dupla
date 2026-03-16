@@ -33,6 +33,11 @@ export type JobCostEntryView = {
   attachments?: JobCostAttachmentView[];
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string | null;
+
+  createdByUser?: { id: string; name?: string | null; email?: string | null } | null;
+  updatedByUser?: { id: string; name?: string | null; email?: string | null } | null;
+  deletedByUser?: { id: string; name?: string | null; email?: string | null } | null;
 };
 
 export type JobCostsSummary = {

@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, CardContent, Chip, Stack, Typography, Divider } from "@mui/material";
+import { Button, Card, CardContent, Chip, Stack, Typography, Divider } from "@mui/material";
 import { formatCurrency, formatDate } from "./utils";
 import { JobCostEntryView } from "./types";
 
@@ -40,6 +40,11 @@ export function JobCostEntryCard({ entry }: Props) {
               color={hasAttachments ? "success" : "default"}
               variant={hasAttachments ? "filled" : "outlined"}
             />
+            <Chip
+              size="small"
+              label={entry.createdByUser?.name ? `Lançado por ${entry.createdByUser.name}` : "Autor não identificado"}
+              variant="outlined"
+            />
           </Stack>
 
           <Divider sx={{ my: 1.5 }} />
@@ -72,6 +77,27 @@ export function JobCostEntryCard({ entry }: Props) {
             <Typography variant="subtitle1" fontWeight={800}>
               {formatCurrency(entry.total)}
             </Typography>
+          </Stack>
+
+          <Stack spacing={0.5} sx={{ mt: 1.5 }}>
+            {entry.createdByUser?.name ? (
+              <Typography variant="caption" color="text.secondary">
+                Criado por: {entry.createdByUser.name}
+              </Typography>
+            ) : null}
+            {entry.updatedByUser?.name ? (
+              <Typography variant="caption" color="text.secondary">
+                Última edição: {entry.updatedByUser.name}
+              </Typography>
+            ) : null}
+            {entry.deletedAt && entry.deletedByUser?.name ? (
+              <Typography variant="caption" color="error.main">
+                Excluído por: {entry.deletedByUser.name}
+              </Typography>
+            ) : null}
+            <Button variant="text" size="small">
+              Ver histórico
+            </Button>
           </Stack>
         </Stack>
       </CardContent>

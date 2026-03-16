@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { ActivityFeedService } from "../activity-feed/activity-feed.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { ListJobCostsDto } from "./dto/list-job-costs.dto";
 import { UpsertJobCostDto } from "./dto/upsert-job-cost.dto";
@@ -10,7 +11,10 @@ type SummaryBucket = {
 
 @Injectable()
 export class JobCostsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+  private prisma: PrismaService,
+  private activityFeed: ActivityFeedService,
+) {}
 
   async list(query: ListJobCostsDto) {
     return this.prisma.jobCostEntry.findMany({
@@ -29,7 +33,11 @@ export class JobCostsService {
           : {}),
       },
       include: {
+        createdByUser: { select: { id: true, name: true, email: true } },
+        updatedByUser: { select: { id: true, name: true, email: true } },
+        deletedByUser: { select: { id: true, name: true, email: true } },
         attachments: {
+          where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
         },
       },
@@ -37,77 +45,165 @@ export class JobCostsService {
     });
   }
 
-  async create(dto: UpsertJobCostDto) {
-    return this.prisma.jobCostEntry.create({
+  async create(companyId: string, userId: string, dto: UpsertJobCostDto) {
+    const created = await this.prisma.jobCostEntry.create({
       data: {
-        companyId: dto.companyId,
+        companyId,
         jobSiteId: dto.jobSiteId,
         date: new Date(dto.date),
         source: dto.source,
         category: dto.category,
         description: dto.description,
         weekLabel: dto.weekLabel ?? null,
-        quantity: dto.quantity ?? 1,
-        unitPrice: dto.unitPrice ?? 0,
-        total: dto.total,
+        quantity: dto.quantity ?? null,
+        unitPrice: dto.unitPrice ?? null,
+        totalAmount: dto.totalAmount,
         payer: dto.payer,
-        supplier: dto.supplierName ?? null,
-        invoiceNumber: dto.documentNumber ?? null,
+        supplier: dto.supplier ?? null,
+        invoiceNumber: dto.invoiceNumber ?? null,
         paymentMethod: dto.paymentMethod ?? null,
         notes: dto.notes ?? null,
+        createdByUserId: userId,
+        updatedByUserId: userId,
       },
       include: {
-        attachments: true,
+        createdByUser: { select: { id: true, name: true, email: true } },
+        updatedByUser: { select: { id: true, name: true, email: true } },
+        deletedByUser: { select: { id: true, name: true, email: true } },
+        attachments: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
+
+    await this.activityFeed.create(
+      companyId,
+      userId,
+      "JOB_COST_CREATED",
+      "JobCostEntry",
+      created.id,
+      {
+        description: created.description,
+        totalAmount: created.totalAmount,
+        payer: created.payer,
+        source: created.source,
+        category: created.category,
+      },
+    );
+
+    return created;
   }
 
-  async update(id: string, dto: UpsertJobCostDto) {
-    const existing = await this.prisma.jobCostEntry.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException("Lançamento de custo não encontrado.");
+  async update(companyId: string, userId: string, id: string, dto: UpsertJobCostDto) {
+    const existing = await this.prisma.jobCostEntry.findFirst({
+      where: { id, companyId, deletedAt: null },
+    });
 
-    return this.prisma.jobCostEntry.update({
+    if (!existing) {
+      throw new NotFoundException("Lançamento não encontrado");
+    }
+
+    const updated = await this.prisma.jobCostEntry.update({
       where: { id },
       data: {
-        companyId: dto.companyId,
         jobSiteId: dto.jobSiteId,
         date: new Date(dto.date),
         source: dto.source,
         category: dto.category,
         description: dto.description,
         weekLabel: dto.weekLabel ?? null,
-        quantity: dto.quantity ?? 1,
-        unitPrice: dto.unitPrice ?? 0,
-        total: dto.total,
+        quantity: dto.quantity ?? null,
+        unitPrice: dto.unitPrice ?? null,
+        totalAmount: dto.totalAmount,
         payer: dto.payer,
-        supplier: dto.supplierName ?? null,
-        invoiceNumber: dto.documentNumber ?? null,
+        supplier: dto.supplier ?? null,
+        invoiceNumber: dto.invoiceNumber ?? null,
         paymentMethod: dto.paymentMethod ?? null,
         notes: dto.notes ?? null,
+        updatedByUserId: userId,
+        version: { increment: 1 },
       },
       include: {
-        attachments: true,
+        createdByUser: { select: { id: true, name: true, email: true } },
+        updatedByUser: { select: { id: true, name: true, email: true } },
+        deletedByUser: { select: { id: true, name: true, email: true } },
+        attachments: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
+
+    await this.activityFeed.create(
+      companyId,
+      userId,
+      "JOB_COST_UPDATED",
+      "JobCostEntry",
+      updated.id,
+      {
+        before: {
+          description: existing.description,
+          totalAmount: existing.totalAmount,
+          payer: existing.payer,
+          category: existing.category,
+          source: existing.source,
+        },
+        after: {
+          description: updated.description,
+          totalAmount: updated.totalAmount,
+          payer: updated.payer,
+          category: updated.category,
+          source: updated.source,
+        },
+      },
+    );
+
+    return updated;
   }
 
-  async remove(id: string) {
-    const existing = await this.prisma.jobCostEntry.findUnique({
+  async remove(companyId: string, userId: string, id: string) {
+    const existing = await this.prisma.jobCostEntry.findFirst({
+      where: { id, companyId, deletedAt: null },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Lançamento não encontrado");
+    }
+
+    const deleted = await this.prisma.jobCostEntry.update({
       where: { id },
-      include: { attachments: true },
+      data: {
+        deletedAt: new Date(),
+        deletedByUserId: userId,
+        updatedByUserId: userId,
+        version: { increment: 1 },
+      },
+      include: {
+        createdByUser: { select: { id: true, name: true, email: true } },
+        updatedByUser: { select: { id: true, name: true, email: true } },
+        deletedByUser: { select: { id: true, name: true, email: true } },
+        attachments: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+        },
+      },
     });
 
-    if (!existing) throw new NotFoundException("Lançamento de custo não encontrado.");
+    await this.activityFeed.create(
+      companyId,
+      userId,
+      "JOB_COST_DELETED",
+      "JobCostEntry",
+      deleted.id,
+      {
+        description: existing.description,
+        totalAmount: existing.totalAmount,
+        payer: existing.payer,
+      },
+    );
 
-    await this.prisma.jobCostAttachment.deleteMany({
-      where: { jobCostEntryId: id },
-    });
-
-    await this.prisma.jobCostEntry.delete({
-      where: { id },
-    });
-
-    return { ok: true };
+    return deleted;
   }
 
   async summary(jobSiteId: string) {
