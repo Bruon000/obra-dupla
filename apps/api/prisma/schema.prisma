@@ -1,0 +1,163 @@
+// https://pris.ly/d/prisma-schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id            String          @id @default(uuid())
+  name          String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  users         User[]
+  clients       Client[]
+  jobSites      JobSite[]
+  quotes        Quote[]
+  jobCostEntries       JobCostEntry[]
+  jobCostAttachments   JobCostAttachment[]
+  customFields  CustomField[]
+  workflows     Workflow[]
+  templates     Template[]
+  syncDevices   SyncDevice[]
+  syncConflicts SyncConflict[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model JobSite {
+  id           String      @id @default(uuid())
+  companyId    String
+  company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  quotes       Quote[]
+  costEntries  JobCostEntry[]
+  customFieldValues CustomFieldValue[]
+}
+
+model Quote {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobSiteId String
+  jobSite   JobSite  @relation(fields: [jobSiteId], references: [id], onDelete: Cascade)
+}
+
+model CustomField {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model CustomFieldValue {
+  id        String   @id @default(uuid())
+  jobSiteId String
+  jobSite   JobSite  @relation(fields: [jobSiteId], references: [id], onDelete: Cascade)
+}
+
+model Workflow {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model Template {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model SyncDevice {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model SyncConflict {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model JobCostEntry {
+  id              String      @id @default(uuid())
+  companyId       String
+  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  jobSiteId       String
+  jobSite         JobSite     @relation(fields: [jobSiteId], references: [id], onDelete: Cascade)
+
+  date            DateTime
+  source          String
+  category        String
+  description     String
+  weekLabel       String?
+
+  quantity        Decimal     @default(1) @db.Decimal(12, 3)
+  unitPrice       Decimal     @default(0) @db.Decimal(14, 2)
+  total           Decimal     @default(0) @db.Decimal(14, 2)
+
+  payer           String
+  supplier        String?
+  paymentMethod   String?
+  invoiceNumber   String?
+  notes           String?     @db.Text
+
+  version         Int         @default(1)
+  deviceId        String?
+  lastSyncedAt    DateTime?
+  deletedAt       DateTime?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  attachments     JobCostAttachment[]
+
+  @@index([companyId, jobSiteId, date])
+  @@index([companyId, payer])
+  @@index([jobSiteId, deletedAt])
+}
+
+model JobCostAttachment {
+  id                String       @id @default(uuid())
+  companyId         String
+  company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  jobCostEntryId    String
+  jobCostEntry      JobCostEntry @relation(fields: [jobCostEntryId], references: [id], onDelete: Cascade)
+
+  fileName          String
+  mimeType          String
+  fileSize          Int?
+  storageType       String       @default("inline")
+  fileDataBase64    String?      @db.Text
+  fileUrl           String?
+  thumbnailBase64   String?      @db.Text
+
+  version           Int          @default(1)
+  deviceId          String?
+  lastSyncedAt      DateTime?
+  deletedAt         DateTime?
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([companyId, jobCostEntryId])
+  @@index([jobCostEntryId, deletedAt])
+}
