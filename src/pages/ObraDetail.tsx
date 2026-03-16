@@ -35,6 +35,12 @@ const ObraDetail = () => {
   const [filterUser, setFilterUser] = useState<string | null>(null);
 
   const construction = CONSTRUCTIONS.find((c) => c.id === id);
+  const [expenses, setExpenses] = useState<Expense[]>(EXPENSES.filter((e) => e.constructionId === id));
+  const [legalCosts, setLegalCosts] = useState<LegalCost[]>(LEGAL_COSTS.filter((l) => l.constructionId === id));
+  const [laborEntries, setLaborEntries] = useState<LaborEntry[]>(LABOR_ENTRIES.filter((l) => l.constructionId === id));
+  const sale = SALES[id!];
+  const members = MEMBERS.filter((m) => m.constructionId === id);
+
   if (!construction) {
     return (
       <MobileShell showNav={false}>
@@ -44,12 +50,6 @@ const ObraDetail = () => {
       </MobileShell>
     );
   }
-
-  const [expenses, setExpenses] = useState<Expense[]>(EXPENSES.filter((e) => e.constructionId === id));
-  const [legalCosts, setLegalCosts] = useState<LegalCost[]>(LEGAL_COSTS.filter((l) => l.constructionId === id));
-  const [laborEntries, setLaborEntries] = useState<LaborEntry[]>(LABOR_ENTRIES.filter((l) => l.constructionId === id));
-  const sale = SALES[id!];
-  const members = MEMBERS.filter((m) => m.constructionId === id);
 
   const totals = useMemo(
     () => calculateObraTotals(expenses, legalCosts, laborEntries, members, sale),
