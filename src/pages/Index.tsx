@@ -1,16 +1,40 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useNavigate } from 'react-router-dom';
+import { HardHat } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
+  const navigate = useNavigate();
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+      <div className="w-full max-w-sm text-center space-y-8">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <HardHat className="w-8 h-8 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">ObraDupla</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Controle de obras entre sócios
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Button
+            size="lg"
+            className="w-full h-14 text-base font-bold"
+            onClick={() => navigate('/dashboard')}
+          >
+            Entrar
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Gerencie gastos, mão de obra e lucros da sua construção
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
