@@ -23,9 +23,10 @@ export const calculateObraTotals = (
     const totalPaid = paidExpenses + paidLegal + paidLabor;
 
     const idealContribution = grandTotal * (member.sharePercent / 100);
-    const balance = totalPaid - idealContribution;
+    const balance = totalPaid - idealContribution; // positivo = pagou a mais, negativo = pagou a menos
     const profitShare = liquidProfit * (member.sharePercent / 100);
-    const finalSettlement = profitShare - balance; // positive = receives, negative = pays
+    // Acerto final: lucro da parte + saldo do rateio → positivo = recebe, negativo = paga
+    const finalSettlement = profitShare + balance;
 
     return {
       userId: member.userId,

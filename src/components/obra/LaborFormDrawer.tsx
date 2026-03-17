@@ -1,13 +1,12 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MEMBERS } from '@/lib/mock-data';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
-import { Plus } from 'lucide-react';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import type { LaborEntry, ConstructionMember } from '@/types';
 
 const laborSchema = z.object({
   service: z.string().min(3, 'Mínimo 3 caracteres'),
@@ -21,33 +20,39 @@ const laborSchema = z.object({
 
 type LaborFormData = z.infer<typeof laborSchema>;
 
-interface LaborFormProps {
-  onSubmit: (data: LaborFormData) => void;
+const defaultValues: LaborFormData = { startDate: '', endDate: '', weekLabel: '', paidByUserId: '', notes: '' };
+
+interface LaborFormDrawerProps {
+  members: ConstructionMember[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editingEntry: LaborEntry | null;
+  onSubmit: (data: LaborFormData, entryId?: string) => void;
 }
 
-export function LaborFormDrawer({ onSubmit }: LaborFormProps) {
-  const [open, setOpen] = useState(false);
+export function LaborFormDrawer({ members, open, onOpenChange, editingEntry, onSubmit }: LaborFormDrawerProps) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<LaborFormData>({
     resolver: zodResolver(laborSchema),
-    defaultValues: { startDate: '', endDate: '', weekLabel: '', paidByUserId: '', notes: '' },
+    defaultValues,
   });
 
+  useEffect(() => {
+    if (open && editingEntry) {
+      reset({ service: editingEntry.service, weekLabel: editingEntry.weekLabel, startDate: editingEntry.startDate, endDate: editingEntry.endDate, value: editingEntry.value, paidByUserId: editingEntry.paidByUserId, notes: editingEntry.notes || '' });
+    } else if (open && !editingEntry) reset(defaultValues);
+  }, [open, editingEntry, reset]);
+
   const handleFormSubmit = (data: LaborFormData) => {
-    onSubmit(data);
+    onSubmit(data, editingEntry?.id);
     reset();
-    setOpen(false);
+    onOpenChange(false);
   };
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
-        <Button size="lg" className="fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-card">
-          <Plus className="w-6 h-6" />
-        </Button>
-      </DrawerTrigger>
+    <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[90vh]">
         <DrawerHeader>
-          <DrawerTitle>Nova Mão de Obra</DrawerTitle>
+          <DrawerTitle>{editingEntry ? 'Editar Mão de Obra' : 'Nova Mão de Obra'}</DrawerTitle>
         </DrawerHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="p-4 space-y-4 overflow-y-auto">
           <div>
@@ -78,7 +83,7 @@ export function LaborFormDrawer({ onSubmit }: LaborFormProps) {
           <div>
             <Label>Quem pagou?</Label>
             <div className="grid grid-cols-2 gap-2 mt-1">
-              {MEMBERS.map((m) => (
+              {members.map((m) => (
                 <label key={m.userId} className="flex items-center gap-2 p-3 rounded-lg border border-border cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-emerald-light transition-colors">
                   <input type="radio" value={m.userId} {...register('paidByUserId')} className="sr-only" />
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">{m.name[0]}</div>
@@ -92,7 +97,7 @@ export function LaborFormDrawer({ onSubmit }: LaborFormProps) {
             <Label>Observações</Label>
             <Input {...register('notes')} placeholder="Opcional" className="h-12 text-base" />
           </div>
-          <Button type="submit" size="lg" className="w-full h-14 text-base font-bold">Salvar Mão de Obra</Button>
+          <Button type="submit" size="lg" className="w-full h-14 text-base font-bold">{editingEntry ? 'Salvar alterações' : 'Salvar Mão de Obra'}</Button>
         </form>
       </DrawerContent>
     </Drawer>

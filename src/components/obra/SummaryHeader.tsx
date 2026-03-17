@@ -3,27 +3,35 @@ import type { ObraTotals } from '@/types';
 
 interface SummaryHeaderProps {
   totals: ObraTotals;
+  hasSale?: boolean;
 }
 
-export function SummaryHeader({ totals }: SummaryHeaderProps) {
+export function SummaryHeader({ totals, hasSale }: SummaryHeaderProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 p-4 bg-foreground text-background rounded-2xl shadow-card">
-      <div className="flex flex-col">
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-          Investimento Total
-        </span>
-        <span className="text-xl font-mono font-bold tracking-tight">
-          {formatCurrency(totals.grandTotal)}
-        </span>
+    <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+      <div className="grid grid-cols-2 gap-0">
+        <div className="p-3 border-r border-border">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-extrabold">
+          Investimento total
+          </span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-base font-mono font-extrabold tracking-tight">
+              {formatCurrency(totals.grandTotal)}
+            </span>
+          </div>
+        </div>
+        <div className="p-3">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-extrabold">
+          {hasSale ? 'Lucro líquido' : 'Lucro (após venda)'}
+          </span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-base font-mono font-extrabold tracking-tight text-primary">
+              {formatCurrency(totals.liquidProfit)}
+            </span>
+          </div>
+        </div>
       </div>
-      <div className="flex flex-col border-l border-muted-foreground/20 pl-4">
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-          Lucro Líquido
-        </span>
-        <span className="text-xl font-mono font-bold tracking-tight text-primary">
-          {formatCurrency(totals.liquidProfit)}
-        </span>
-      </div>
+      <div className="h-1 bg-gradient-to-r from-primary/80 via-primary/30 to-accent/70" />
     </div>
   );
 }

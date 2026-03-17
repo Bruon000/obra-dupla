@@ -64,9 +64,21 @@ model JobSite {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
+  title        String
+  address      String      @default("")
+  notes        String      @default("")
+  status       String      @default("EM_ANDAMENTO")
+  startDate    DateTime?   @db.Date
+  endDate      DateTime?   @db.Date
+  saleValue    Decimal     @default(0) @db.Decimal(14, 2)
+
+  deletedAt    DateTime?
+
   quotes       Quote[]
   costEntries  JobCostEntry[]
   customFieldValues CustomFieldValue[]
+
+  @@index([companyId, deletedAt, createdAt])
 }
 
 model Quote {

@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { HardHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
@@ -24,9 +26,9 @@ const Index = () => {
           <Button
             size="lg"
             className="w-full h-14 text-base font-bold"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(isAuthenticated ? '/dashboard' : '/login')}
           >
-            Entrar
+            {isAuthenticated ? 'Ir para o app' : 'Entrar'}
           </Button>
           <p className="text-xs text-muted-foreground">
             Gerencie gastos, mão de obra e lucros da sua construção

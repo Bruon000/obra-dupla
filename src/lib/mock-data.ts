@@ -1,3 +1,8 @@
+/**
+ * Dados mock para desenvolvimento do frontend (Vite/React na raiz).
+ * Integração com a API real (job-costs, job-sites, users) é pendente.
+ * A API está em http://localhost:3005 (NestJS).
+ */
 import type { Construction, ConstructionMember, Expense, LegalCost, LaborEntry, Sale } from '@/types';
 
 export const MEMBERS: ConstructionMember[] = [

@@ -28,8 +28,9 @@ function MetricCard(props: { title: string; value: number; subtitle?: string }) 
 export function JobCostsSummaryCards({ summary }: { summary?: JobCostsSummary }) {
   if (!summary) return null;
 
-  const brunoDiff = summary.settlement?.bruno?.delta ?? 0;
-  const robertoDiff = summary.settlement?.roberto?.delta ?? 0;
+  const brunoDelta = summary.settlement?.bruno?.delta ?? 0;
+  const robertoDelta = summary.settlement?.roberto?.delta ?? 0;
+  const absAmount = Math.abs(brunoDelta);
 
   return (
     <Grid container spacing={1.5}>
@@ -48,14 +49,19 @@ export function JobCostsSummaryCards({ summary }: { summary?: JobCostsSummary })
             </Stack>
             <Stack direction="row" spacing={1} flexWrap="wrap">
               <Chip
-                color={brunoDiff > 0 ? "success" : brunoDiff < 0 ? "warning" : "default"}
-                label={`Bruno saldo ${formatCurrency(brunoDiff)}`}
+                color={brunoDelta > 0 ? "success" : brunoDelta < 0 ? "warning" : "default"}
+                label={brunoDelta > 0 ? `Bruno recebe ${formatCurrency(brunoDelta)}` : brunoDelta < 0 ? `Bruno paga ${formatCurrency(absAmount)}` : "Bruno em dia"}
               />
               <Chip
-                color={robertoDiff > 0 ? "success" : robertoDiff < 0 ? "warning" : "default"}
-                label={`Roberto saldo ${formatCurrency(robertoDiff)}`}
+                color={robertoDelta > 0 ? "success" : robertoDelta < 0 ? "warning" : "default"}
+                label={robertoDelta > 0 ? `Roberto recebe ${formatCurrency(robertoDelta)}` : robertoDelta < 0 ? `Roberto paga ${formatCurrency(absAmount)}` : "Roberto em dia"}
               />
             </Stack>
+            {absAmount > 0 && (
+              <Typography variant="body2" fontWeight={600} sx={{ mt: 1 }}>
+                Acerto entre sócios: {robertoDelta < 0 ? "Roberto" : "Bruno"} paga {formatCurrency(absAmount)} para {brunoDelta > 0 ? "Bruno" : "Roberto"}
+              </Typography>
+            )}
           </Stack>
         </Paper>
       </Grid>
@@ -76,14 +82,14 @@ export function JobCostsSummaryCards({ summary }: { summary?: JobCostsSummary })
         <MetricCard
           title="Bruno pagou"
           value={summary?.settlement.bruno.paid ?? 0}
-          subtitle={`Diferença: ${formatCurrency(summary?.settlement.bruno.delta ?? 0)}`}
+          subtitle={(summary?.settlement?.bruno?.delta ?? 0) > 0 ? `Recebe ${formatCurrency(summary.settlement.bruno.delta)}` : (summary?.settlement?.bruno?.delta ?? 0) < 0 ? `Paga ${formatCurrency(Math.abs(summary.settlement.bruno.delta))}` : "Em dia"}
         />
       </Grid>
       <Grid size={{ xs: 6, sm: 3 }}>
         <MetricCard
           title="Roberto pagou"
-          value={summary?.settlement.roberto.paid ?? 0}
-          subtitle={`Diferença: ${formatCurrency(summary?.settlement.roberto.delta ?? 0)}`}
+          value={summary?.settlement?.roberto?.paid ?? 0}
+          subtitle={(summary?.settlement?.roberto?.delta ?? 0) > 0 ? `Recebe ${formatCurrency(summary.settlement.roberto.delta)}` : (summary?.settlement?.roberto?.delta ?? 0) < 0 ? `Paga ${formatCurrency(Math.abs(summary.settlement.roberto.delta))}` : "Em dia"}
         />
       </Grid>
       <Grid size={{ xs: 6, sm: 3 }}>

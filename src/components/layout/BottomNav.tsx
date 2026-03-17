@@ -1,9 +1,10 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, HardHat, Plus } from 'lucide-react';
+import { LayoutDashboard, HardHat, Plus, Users } from 'lucide-react';
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Início', path: '/dashboard' },
   { icon: HardHat, label: 'Obras', path: '/obras' },
+  { icon: Users, label: 'Usuários', path: '/usuarios' },
 ];
 
 export function BottomNav() {

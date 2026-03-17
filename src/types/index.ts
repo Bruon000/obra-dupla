@@ -21,6 +21,13 @@ export interface ConstructionMember {
   sharePercent: number;
 }
 
+export interface ExpenseAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileDataBase64?: string;
+}
+
 export interface Expense {
   id: string;
   constructionId: string;
@@ -34,7 +41,12 @@ export interface Expense {
   totalValue: number;
   paidByUserId: string;
   notes: string;
-  receiptImageUrl: string | null;
+  receiptImageUrl?: string | null;
+  /** Anexos/comprovantes (fotos, PDFs) */
+  attachments?: ExpenseAttachment[];
+  supplier?: string;
+  invoiceNumber?: string;
+  paymentMethod?: string;
 }
 
 export interface LegalCost {

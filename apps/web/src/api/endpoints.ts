@@ -1,4 +1,4 @@
-export const API = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+export const API = import.meta.env.VITE_API_URL ?? "http://localhost:3005";
 export const sync = "/sync";
 export const jobCosts = `${API}/job-costs`;
 export const jobCostAttachments = `${API}/job-cost-attachments`;
@@ -9,3 +9,4 @@ export const activityFeed = `${API}/activity-feed`;
 export const customFields = `${API}/custom-fields`;
 export const workflows = `${API}/workflows`;
 export const templates = `${API}/templates`;
+export const users = `${API}/users`;

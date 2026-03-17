@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MEMBERS, LEGAL_TYPES } from '@/lib/mock-data';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
-import { Plus } from 'lucide-react';
+import { LEGAL_TYPES } from '@/lib/job-cost-constants';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import type { LegalCost, ConstructionMember } from '@/types';
 
 const legalCostSchema = z.object({
   description: z.string().min(3, 'Mínimo 3 caracteres'),
@@ -20,33 +20,39 @@ const legalCostSchema = z.object({
 
 type LegalCostFormData = z.infer<typeof legalCostSchema>;
 
-interface LegalCostFormProps {
-  onSubmit: (data: LegalCostFormData) => void;
+const defaultValues: LegalCostFormData = { date: new Date().toISOString().split('T')[0], type: '', paidByUserId: '', notes: '' };
+
+interface LegalCostFormDrawerProps {
+  members: ConstructionMember[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editingCost: LegalCost | null;
+  onSubmit: (data: LegalCostFormData, costId?: string) => void;
 }
 
-export function LegalCostFormDrawer({ onSubmit }: LegalCostFormProps) {
-  const [open, setOpen] = useState(false);
+export function LegalCostFormDrawer({ members, open, onOpenChange, editingCost, onSubmit }: LegalCostFormDrawerProps) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<LegalCostFormData>({
     resolver: zodResolver(legalCostSchema),
-    defaultValues: { date: new Date().toISOString().split('T')[0], type: '', paidByUserId: '', notes: '' },
+    defaultValues,
   });
 
+  useEffect(() => {
+    if (open && editingCost) {
+      reset({ description: editingCost.description, type: editingCost.type, value: editingCost.value, paidByUserId: editingCost.paidByUserId, date: editingCost.date, notes: editingCost.notes || '' });
+    } else if (open && !editingCost) reset(defaultValues);
+  }, [open, editingCost, reset]);
+
   const handleFormSubmit = (data: LegalCostFormData) => {
-    onSubmit(data);
+    onSubmit(data, editingCost?.id);
     reset();
-    setOpen(false);
+    onOpenChange(false);
   };
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
-        <Button size="lg" className="fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-card">
-          <Plus className="w-6 h-6" />
-        </Button>
-      </DrawerTrigger>
+    <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[90vh]">
         <DrawerHeader>
-          <DrawerTitle>Novo Custo Legal</DrawerTitle>
+          <DrawerTitle>{editingCost ? 'Editar Custo Legal' : 'Novo Custo Legal'}</DrawerTitle>
         </DrawerHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="p-4 space-y-4 overflow-y-auto">
           <div>
@@ -76,7 +82,7 @@ export function LegalCostFormDrawer({ onSubmit }: LegalCostFormProps) {
           <div>
             <Label>Quem pagou?</Label>
             <div className="grid grid-cols-2 gap-2 mt-1">
-              {MEMBERS.map((m) => (
+              {members.map((m) => (
                 <label key={m.userId} className="flex items-center gap-2 p-3 rounded-lg border border-border cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-emerald-light transition-colors">
                   <input type="radio" value={m.userId} {...register('paidByUserId')} className="sr-only" />
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">{m.name[0]}</div>
@@ -90,7 +96,7 @@ export function LegalCostFormDrawer({ onSubmit }: LegalCostFormProps) {
             <Label>Observações</Label>
             <Input {...register('notes')} placeholder="Opcional" className="h-12 text-base" />
           </div>
-          <Button type="submit" size="lg" className="w-full h-14 text-base font-bold">Salvar Custo Legal</Button>
+          <Button type="submit" size="lg" className="w-full h-14 text-base font-bold">{editingCost ? 'Salvar alterações' : 'Salvar Custo Legal'}</Button>
         </form>
       </DrawerContent>
     </Drawer>

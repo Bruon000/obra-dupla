@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -11,7 +12,7 @@ export class ActivityFeedService {
     eventType: string,
     entityType: string,
     entityId: string,
-    payload: Record<string, unknown>,
+    payload: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput,
   ): Promise<void> {
     await this.prisma.activityEvent.create({
       data: {
