@@ -7,7 +7,18 @@ export const calculateObraTotals = (
   members: ConstructionMember[],
   sale?: Sale
 ): ObraTotals => {
-  const totalExpenses = expenses.reduce((acc, e) => acc + Number(e.totalValue), 0);
+  // OBRA (custos operacionais) divididos por costType:
+  // - Material: costType === "Material"
+  // - Serviços: tudo que não for Material (Serviço/Ferramenta/Transporte/Outros)
+  const totalMaterialCosts = expenses
+    .filter((e) => (e.costType ?? "Material") === "Material")
+    .reduce((acc, e) => acc + Number(e.totalValue), 0);
+
+  const totalServiceCosts = expenses
+    .filter((e) => (e.costType ?? "Material") !== "Material")
+    .reduce((acc, e) => acc + Number(e.totalValue), 0);
+
+  const totalExpenses = totalMaterialCosts + totalServiceCosts;
   const totalLegalCosts = legalCosts.reduce((acc, l) => acc + Number(l.value), 0);
   const totalLaborCosts = laborEntries.reduce((acc, l) => acc + Number(l.value), 0);
   const grandTotal = totalExpenses + totalLegalCosts + totalLaborCosts;
@@ -41,6 +52,8 @@ export const calculateObraTotals = (
   });
 
   return {
+    totalMaterialCosts,
+    totalServiceCosts,
     totalExpenses,
     totalLegalCosts,
     totalLaborCosts,

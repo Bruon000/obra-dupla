@@ -24,12 +24,12 @@ export class JobSitesController {
 
   @Patch(":id")
   update(@Request() req: any, @Param("id") id: string, @Body() dto: UpdateJobSiteDto) {
-    return this.service.update(req.user.companyId, id, dto);
+    return this.service.update(req.user.companyId, req.user.id, id, dto);
   }
 
   @Delete(":id")
   remove(@Request() req: any, @Param("id") id: string) {
-    return this.service.remove(req.user.companyId, id);
+    return this.service.remove(req.user.companyId, req.user.id, id);
   }
 }
 

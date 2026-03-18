@@ -10,13 +10,15 @@ import type { Sale } from '@/types';
 
 const saleSchema = z.object({
   saleValue: z.coerce.number().positive('Valor deve ser positivo'),
-  commissionValue: z.coerce.number().min(0, 'Mínimo 0'),
+  commissionPercent: z.coerce.number().min(0, 'Mínimo 0').max(100, 'Máximo 100'),
   taxValue: z.coerce.number().min(0, 'Mínimo 0'),
   otherClosingCosts: z.coerce.number().min(0, 'Mínimo 0'),
   notes: z.string().optional(),
 });
 
-export type SaleFormData = z.infer<typeof saleSchema>;
+export type SaleFormData = z.infer<typeof saleSchema> & {
+  commissionValue: number;
+};
 
 interface SaleFormDrawerProps {
   open: boolean;
@@ -28,27 +30,30 @@ interface SaleFormDrawerProps {
 
 export function SaleFormDrawer({ open, onOpenChange, initialData, onSubmit }: SaleFormDrawerProps) {
   const isEdit = !!initialData;
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<SaleFormData>({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<SaleFormData>({
     resolver: zodResolver(saleSchema),
-    defaultValues: { saleValue: 0, commissionValue: 0, taxValue: 0, otherClosingCosts: 0, notes: '' },
+    defaultValues: { saleValue: 0, commissionPercent: 0, commissionValue: 0, taxValue: 0, otherClosingCosts: 0, notes: '' },
   });
 
   useEffect(() => {
     if (open && initialData) {
+      const percent = initialData.saleValue > 0 ? (initialData.commissionValue / initialData.saleValue) * 100 : 0;
       reset({
         saleValue: initialData.saleValue,
+        commissionPercent: Math.round(percent * 100) / 100,
         commissionValue: initialData.commissionValue,
         taxValue: initialData.taxValue,
         otherClosingCosts: initialData.otherClosingCosts,
         notes: initialData.notes ?? '',
       });
     } else if (open && !initialData) {
-      reset({ saleValue: 0, commissionValue: 0, taxValue: 0, otherClosingCosts: 0, notes: '' });
+      reset({ saleValue: 0, commissionPercent: 0, commissionValue: 0, taxValue: 0, otherClosingCosts: 0, notes: '' });
     }
   }, [open, initialData, reset]);
 
   const handleFormSubmit = (data: SaleFormData) => {
-    onSubmit(data);
+    const commissionValue = (data.saleValue || 0) * ((data.commissionPercent || 0) / 100);
+    onSubmit({ ...data, commissionValue });
     reset();
     onOpenChange(false);
   };
@@ -66,9 +71,20 @@ export function SaleFormDrawer({ open, onOpenChange, initialData, onSubmit }: Sa
             {errors.saleValue && <p className="text-destructive text-xs mt-1">{errors.saleValue.message}</p>}
           </div>
           <div>
-            <Label>Comissão (R$)</Label>
-            <Input type="number" inputMode="decimal" step="0.01" {...register('commissionValue')} className="h-12 font-mono mt-1" placeholder="0,00" />
-            {errors.commissionValue && <p className="text-destructive text-xs mt-1">{errors.commissionValue.message}</p>}
+            <Label>Comissão (%)</Label>
+            <Input type="number" inputMode="decimal" step="0.01" {...register('commissionPercent')} className="h-12 font-mono mt-1" placeholder="0,00" />
+            {errors.commissionPercent && <p className="text-destructive text-xs mt-1">{errors.commissionPercent.message}</p>}
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Valor estimado:{" "}
+              <span className="font-mono font-bold">
+                {(() => {
+                  const v = watch('saleValue') || 0;
+                  const p = watch('commissionPercent') || 0;
+                  const amount = v * (p / 100);
+                  return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                })()}
+              </span>
+            </p>
           </div>
           <div>
             <Label>Impostos (R$)</Label>

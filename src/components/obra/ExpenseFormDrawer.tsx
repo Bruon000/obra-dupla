@@ -47,9 +47,40 @@ interface ExpenseFormDrawerProps {
   onSubmit: (data: ExpenseSubmitData, expenseId?: string) => void;
 }
 
+function parseFlexibleNumber(raw: string): number {
+  const value = raw.replace(/\s/g, "");
+  if (!value) return 0;
+
+  const hasComma = value.includes(",");
+  const hasDot = value.includes(".");
+  let normalized = value;
+
+  if (hasComma && hasDot) {
+    const lastComma = value.lastIndexOf(",");
+    const lastDot = value.lastIndexOf(".");
+    if (lastComma > lastDot) {
+      // Formato BR: 10.000,00 -> 10000.00
+      normalized = value.replace(/\./g, "").replace(",", ".");
+    } else {
+      // Formato EN: 10,000.00 -> 10000.00
+      normalized = value.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    // Somente vírgula: 10000,50 -> 10000.50
+    normalized = value.replace(/\./g, "").replace(",", ".");
+  } else {
+    // Somente ponto ou só dígitos: deixa como está
+    normalized = value;
+  }
+
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function ExpenseFormDrawer({ members, open, onOpenChange, editingExpense, onSubmit }: ExpenseFormDrawerProps) {
   const [attachments, setAttachments] = useState<ExpenseAttachment[]>([]);
-  const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<ExpenseFormData>({
+  const [totalOverride, setTotalOverride] = useState<number | null>(null);
+  const { register, handleSubmit, watch, reset, setValue, formState: { errors } } = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues,
   });
@@ -74,12 +105,26 @@ export function ExpenseFormDrawer({ members, open, onOpenChange, editingExpense,
     } else if (open && !editingExpense) {
       reset(defaultValues);
       setAttachments([]);
+      setTotalOverride(null);
     }
   }, [open, editingExpense, reset]);
 
   const quantity = watch('quantity');
   const unitValue = watch('unitValue');
-  const totalValue = (quantity || 0) * (unitValue || 0);
+  const calculatedTotal = (quantity || 0) * (unitValue || 0);
+  const totalValue = totalOverride ?? calculatedTotal;
+
+  const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const nextTotal = parseFlexibleNumber(raw);
+    setTotalOverride(nextTotal);
+    if (quantity && quantity > 0) {
+      const unit = nextTotal / quantity;
+      if (Number.isFinite(unit)) {
+        setValue('unitValue', unit, { shouldValidate: true });
+      }
+    }
+  };
 
   const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -96,7 +141,7 @@ export function ExpenseFormDrawer({ members, open, onOpenChange, editingExpense,
   };
 
   const handleFormSubmit = (data: ExpenseFormData) => {
-    onSubmit({ ...data, totalValue, attachments }, editingExpense?.id);
+    onSubmit({ ...data, totalValue: totalValue || 0, attachments }, editingExpense?.id);
     reset();
     setAttachments([]);
     onOpenChange(false);
@@ -143,9 +188,15 @@ export function ExpenseFormDrawer({ members, open, onOpenChange, editingExpense,
             </div>
             <div>
               <Label>Total</Label>
-              <div className="h-12 flex items-center px-3 rounded-lg bg-muted font-mono font-bold text-base">
-                {totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </div>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={Number.isFinite(totalValue) ? totalValue : 0}
+                onChange={handleTotalChange}
+                className="h-12 text-base font-mono"
+                placeholder="0,00"
+              />
             </div>
           </div>
 
@@ -186,7 +237,19 @@ export function ExpenseFormDrawer({ members, open, onOpenChange, editingExpense,
           </div>
           <div>
             <Label>Forma de pagamento</Label>
-            <Input {...register('paymentMethod')} placeholder="Ex: PIX, cartão" className="h-12 text-base" />
+            <select
+              {...register('paymentMethod')}
+              className="flex h-12 w-full rounded-lg border border-input bg-background px-3 text-base"
+            >
+              <option value="">Selecione</option>
+              <option value="PIX">PIX</option>
+              <option value="Cartão crédito">Cartão crédito</option>
+              <option value="Cartão débito">Cartão débito</option>
+              <option value="Boleto">Boleto</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Transferência">Transferência</option>
+              <option value="Outro">Outro</option>
+            </select>
           </div>
           <div>
             <Label>Observações</Label>
@@ -199,10 +262,23 @@ export function ExpenseFormDrawer({ members, open, onOpenChange, editingExpense,
               Anexos / comprovantes
             </Label>
             <div className="mt-2 space-y-2">
-              <label className="flex items-center justify-center gap-2 h-12 rounded-lg border border-dashed border-border bg-muted/50 cursor-pointer hover:bg-muted transition-colors text-sm text-muted-foreground">
-                <input type="file" className="sr-only" accept="image/*,.pdf" multiple onChange={onFileSelect} />
-                Adicionar foto ou PDF
-              </label>
+              <div className="flex gap-2 flex-wrap">
+                <label className="flex items-center justify-center gap-2 h-12 px-3 rounded-lg border border-dashed border-border bg-muted/50 cursor-pointer hover:bg-muted transition-colors text-sm text-muted-foreground">
+                  <input type="file" className="sr-only" accept="image/*,.pdf" multiple onChange={onFileSelect} />
+                  Adicionar foto / PDF
+                </label>
+                <label className="flex items-center justify-center gap-2 h-12 px-3 rounded-lg border border-border bg-background cursor-pointer hover:bg-muted/30 transition-colors text-sm text-muted-foreground">
+                  <input
+                    type="file"
+                    className="sr-only"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    onChange={onFileSelect}
+                  />
+                  Tirar foto
+                </label>
+              </div>
               {attachments.length > 0 && (
                 <ul className="space-y-1">
                   {attachments.map((a) => (

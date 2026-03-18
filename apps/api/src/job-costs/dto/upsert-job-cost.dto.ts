@@ -29,6 +29,10 @@ export class UpsertJobCostDto {
   @IsString()
   category!: string;
 
+  @IsOptional()
+  @IsString()
+  costType?: string | null;
+
   @IsString()
   description!: string;
 

@@ -19,6 +19,8 @@ model Company {
   quotes        Quote[]
   jobCostEntries       JobCostEntry[]
   jobCostAttachments   JobCostAttachment[]
+  jobSiteMembers      JobSiteMember[]
+  jobSiteDocuments    JobSiteDocument[]
   activityEvents       ActivityEvent[]
   customFields  CustomField[]
   workflows     Workflow[]
@@ -49,6 +51,17 @@ model User {
   deletedJobCostAttachments JobCostAttachment[] @relation("JobCostAttachmentDeletedBy")
 
   activityEvents ActivityEvent[]
+
+  createdJobSiteMembers      JobSiteMember[]      @relation("JobSiteMemberCreatedBy")
+  updatedJobSiteMembers      JobSiteMember[]      @relation("JobSiteMemberUpdatedBy")
+  deletedJobSiteMembers      JobSiteMember[]      @relation("JobSiteMemberDeletedBy")
+
+  createdJobSiteDocuments    JobSiteDocument[]    @relation("JobSiteDocumentCreatedBy")
+  updatedJobSiteDocuments    JobSiteDocument[]    @relation("JobSiteDocumentUpdatedBy")
+  deletedJobSiteDocuments    JobSiteDocument[]    @relation("JobSiteDocumentDeletedBy")
+
+  // Participação da obra (sócios).
+  jobSiteMembers JobSiteMember[] @relation("JobSiteMemberUser")
 }
 
 model Client {
@@ -77,6 +90,9 @@ model JobSite {
   quotes       Quote[]
   costEntries  JobCostEntry[]
   customFieldValues CustomFieldValue[]
+
+  jobSiteMembers   JobSiteMember[]   @relation("JobSiteMemberJobSite")
+  jobSiteDocuments JobSiteDocument[] @relation("JobSiteDocumentJobSite")
 
   @@index([companyId, deletedAt, createdAt])
 }
@@ -136,6 +152,8 @@ model JobCostEntry {
   date            DateTime
   source          String
   category        String
+  // "Material" vs "Serviço" (e afins). Usamos este campo no resumo de obra.
+  costType        String    @default("Material")
   description     String
   weekLabel       String?
   quantity        Decimal?  @db.Decimal(14, 3)
@@ -228,4 +246,77 @@ model ActivityEvent {
   @@index([companyId, entityType, entityId, createdAt])
   @@index([companyId, createdAt])
   @@index([userId])
+}
+
+model JobSiteMember {
+  id            String    @id @default(uuid())
+  companyId     String
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  jobSiteId     String
+  jobSite       JobSite   @relation("JobSiteMemberJobSite", fields: [jobSiteId], references: [id], onDelete: Cascade)
+
+  userId        String
+  user          User      @relation("JobSiteMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Mantemos snapshot do nome para deixar trilha de auditoria mais útil.
+  name          String
+  sharePercent Decimal   @db.Decimal(6, 2)
+  sortIndex     Int       @default(0)
+
+  version       Int       @default(1)
+
+  deletedAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  createdByUserId  String?
+  updatedByUserId  String?
+  deletedByUserId  String?
+
+  createdByUser    User?     @relation("JobSiteMemberCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser    User?     @relation("JobSiteMemberUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  deletedByUser    User?     @relation("JobSiteMemberDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, jobSiteId, deletedAt, sortIndex])
+  @@index([companyId, userId, deletedAt])
+}
+
+model JobSiteDocument {
+  id            String   @id @default(uuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  jobSiteId     String
+  jobSite       JobSite  @relation("JobSiteDocumentJobSite", fields: [jobSiteId], references: [id], onDelete: Cascade)
+
+  category      String
+  title         String
+
+  fileName      String
+  mimeType      String
+  storageType   String
+  fileDataBase64 String?
+  fileUrl       String?
+  thumbnailBase64 String?
+
+  uploadedByUserId String?
+  createdByUserId  String?
+  updatedByUserId  String?
+  deletedByUserId  String?
+
+  createdByUser  User?  @relation("JobSiteDocumentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser  User?  @relation("JobSiteDocumentUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  deletedByUser  User?  @relation("JobSiteDocumentDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
+
+  version        Int      @default(1)
+  deviceId       String?
+  lastSyncedAt   DateTime?
+
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([companyId, jobSiteId, deletedAt, createdAt])
+  @@index([companyId, uploadedByUserId])
 }

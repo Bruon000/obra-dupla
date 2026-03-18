@@ -1,4 +1,14 @@
-import type { ExpenseAttachment } from '@/types';
+import type { ExpenseAttachment, JobSiteDocument } from '@/types';
+
+type DownloadableFile = Pick<ExpenseAttachment, "fileName" | "mimeType" | "fileDataBase64"> & {
+  fileUrl?: string | null;
+};
+
+export function attachmentToDataUrl(att: DownloadableFile): string | null {
+  if (att.fileUrl) return att.fileUrl;
+  if (!att.fileDataBase64) return null;
+  return `data:${att.mimeType || "application/octet-stream"};base64,${att.fileDataBase64}`;
+}
 
 export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -23,14 +33,40 @@ export async function fileToExpenseAttachment(file: File): Promise<ExpenseAttach
   };
 }
 
-export function openAttachment(att: ExpenseAttachment) {
+export function openAttachment(att: DownloadableFile) {
+  if (att.fileUrl) {
+    window.open(att.fileUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
   if (!att.fileDataBase64) return;
   const dataUrl = `data:${att.mimeType};base64,${att.fileDataBase64}`;
-  const w = window.open('', '_blank', 'noopener,noreferrer');
+  const w = window.open("", "_blank", "noopener,noreferrer");
   if (!w) return;
-  if (att.mimeType.startsWith('image/')) {
+  if (att.mimeType.startsWith("image/")) {
     w.document.write(`<img src="${dataUrl}" style="max-width:100%;height:auto;" alt="${att.fileName}" />`);
   } else {
     w.location.href = dataUrl;
   }
+}
+
+export function downloadAttachment(att: DownloadableFile) {
+  if (att.fileUrl) {
+    const a = document.createElement("a");
+    a.href = att.fileUrl;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.download = att.fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
+  if (!att.fileDataBase64) return;
+  const dataUrl = `data:${att.mimeType};base64,${att.fileDataBase64}`;
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = att.fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }

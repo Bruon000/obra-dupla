@@ -19,6 +19,8 @@ export interface ConstructionMember {
   name: string;
   email: string;
   sharePercent: number;
+  sortIndex?: number;
+  createdAt?: string;
 }
 
 export interface ExpenseAttachment {
@@ -26,11 +28,16 @@ export interface ExpenseAttachment {
   fileName: string;
   mimeType: string;
   fileDataBase64?: string;
+  thumbnailBase64?: string | null;
+  createdAt?: string;
+  createdByUser?: { id: string; name: string; email: string } | null;
 }
 
 export interface Expense {
   id: string;
   constructionId: string;
+  createdByUserId?: string | null;
+  updatedByUserId?: string | null;
   date: string;
   costType: string;
   category: string;
@@ -52,12 +59,14 @@ export interface Expense {
 export interface LegalCost {
   id: string;
   constructionId: string;
+  createdByUserId?: string | null;
   date: string;
   type: string;
   description: string;
   value: number;
   paidByUserId: string;
   notes: string;
+  attachments?: ExpenseAttachment[];
 }
 
 export interface LaborEntry {
@@ -70,6 +79,8 @@ export interface LaborEntry {
   value: number;
   paidByUserId: string;
   notes: string;
+  attachments?: ExpenseAttachment[];
+  createdByUserId?: string | null;
 }
 
 export interface Sale {
@@ -95,10 +106,39 @@ export interface MemberStats {
 }
 
 export interface ObraTotals {
+  totalMaterialCosts: number;
+  totalServiceCosts: number;
   totalExpenses: number;
   totalLegalCosts: number;
   totalLaborCosts: number;
   grandTotal: number;
   liquidProfit: number;
   memberStats: MemberStats[];
+}
+
+export type JobSiteDocumentCategory =
+  | "CONTRATO"
+  | "PLANTA"
+  | "FOTO"
+  | "ALVARA"
+  | "NF"
+  | "RECIBO"
+  | "OUTROS";
+
+export interface JobSiteDocument {
+  id: string;
+  jobSiteId: string;
+  category: JobSiteDocumentCategory | string;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  storageType: "inline" | "local" | "remote" | string;
+  fileDataBase64?: string | null;
+  fileUrl?: string | null;
+  thumbnailBase64?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+  createdByUser?: { id: string; name: string; email: string } | null;
+  uploadedByUserId?: string | null;
 }

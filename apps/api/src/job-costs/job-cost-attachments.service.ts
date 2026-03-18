@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ActivityFeedService } from "../activity-feed/activity-feed.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UpsertJobCostAttachmentDto } from "./dto/upsert-job-cost-attachment.dto";
@@ -10,7 +10,40 @@ export class JobCostAttachmentsService {
     private readonly activityFeed: ActivityFeedService,
   ) {}
 
+  private async getUserRole(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    return user?.role ?? null;
+  }
+
+  private isAdmin(role: string | null): boolean {
+    return role === "ADMIN";
+  }
+
   async create(companyId: string, userId: string, dto: UpsertJobCostAttachmentDto) {
+    const jobCostEntry = await this.prisma.jobCostEntry.findFirst({
+      where: { id: dto.jobCostEntryId, companyId, deletedAt: null },
+      select: { payer: true, source: true, description: true, createdByUserId: true },
+    });
+    if (!jobCostEntry) throw new NotFoundException("Lançamento não encontrado para anexar.");
+
+    const role = await this.getUserRole(userId);
+    const isAdmin = this.isAdmin(role);
+
+    if (!isAdmin && jobCostEntry.createdByUserId !== userId) {
+      try {
+        await this.activityFeed.create(companyId, userId, "JOB_COST_ATTACHMENT_CREATE_DENIED", "JobCostEntry", dto.jobCostEntryId, {
+          targetCreatedByUserId: jobCostEntry.createdByUserId,
+          reason: "NOT_AUTHORIZED_TO_ATTACH",
+        });
+      } catch {
+        // best-effort
+      }
+      throw new ForbiddenException("Você só pode anexar em lançamentos que você mesmo criou.");
+    }
+
     const created = await this.prisma.jobCostAttachment.create({
       data: {
         companyId,
@@ -30,12 +63,16 @@ export class JobCostAttachmentsService {
       companyId,
       userId,
       "JOB_COST_ATTACHMENT_CREATED",
-      "JobCostAttachment",
-      created.id,
+      "JobCostEntry",
+      created.jobCostEntryId,
       {
         jobCostEntryId: created.jobCostEntryId,
         fileName: created.fileName,
         mimeType: created.mimeType,
+        description: jobCostEntry.description,
+        payer: jobCostEntry.payer,
+        source: jobCostEntry.source,
+        permission: isAdmin ? "ADMIN_OVERRIDE" : "AUTHOR",
       },
     );
 
@@ -45,10 +82,43 @@ export class JobCostAttachmentsService {
   async update(companyId: string, userId: string, id: string, dto: UpsertJobCostAttachmentDto) {
     const existing = await this.prisma.jobCostAttachment.findFirst({
       where: { id, companyId, deletedAt: null },
+      select: {
+        id: true,
+        jobCostEntryId: true,
+        fileName: true,
+        mimeType: true,
+        jobCostEntry: {
+          select: { payer: true, source: true, description: true, createdByUserId: true },
+        },
+        createdByUserId: true,
+      },
     });
     if (!existing) throw new NotFoundException("Anexo não encontrado");
 
-    return this.prisma.jobCostAttachment.update({
+    const role = await this.getUserRole(userId);
+    const isAdmin = this.isAdmin(role);
+
+    if (!isAdmin && existing.jobCostEntry.createdByUserId !== userId) {
+      try {
+        await this.activityFeed.create(companyId, userId, "JOB_COST_ATTACHMENT_UPDATE_DENIED", "JobCostEntry", existing.jobCostEntryId, {
+          targetCreatedByUserId: existing.jobCostEntry.createdByUserId,
+          reason: "NOT_AUTHORIZED_TO_EDIT_ATTACHMENT",
+        });
+      } catch {
+        // best-effort
+      }
+      throw new ForbiddenException("Você só pode editar anexos em lançamentos que você mesmo criou.");
+    }
+
+    const before = {
+      fileName: existing.fileName,
+      mimeType: existing.mimeType,
+      description: existing.jobCostEntry.description,
+      payer: existing.jobCostEntry.payer,
+      source: existing.jobCostEntry.source,
+    };
+
+    const updated = await this.prisma.jobCostAttachment.update({
       where: { id },
       data: {
         fileName: dto.fileName,
@@ -61,15 +131,70 @@ export class JobCostAttachmentsService {
         version: { increment: 1 },
       },
     });
+
+    await this.activityFeed.create(
+      companyId,
+      userId,
+      "JOB_COST_ATTACHMENT_UPDATED",
+      "JobCostEntry",
+      updated.jobCostEntryId,
+      {
+        before,
+        after: {
+          fileName: updated.fileName,
+          mimeType: updated.mimeType,
+          description: before.description,
+          payer: before.payer,
+          source: before.source,
+        },
+        permission: isAdmin && existing.createdByUserId !== userId ? "ADMIN_OVERRIDE" : "AUTHOR",
+        targetCreatedByUserId: existing.jobCostEntry.createdByUserId,
+      },
+    );
+
+    return updated;
   }
 
   async remove(companyId: string, userId: string, id: string) {
     const existing = await this.prisma.jobCostAttachment.findFirst({
       where: { id, companyId, deletedAt: null },
+      select: {
+        id: true,
+        jobCostEntryId: true,
+        fileName: true,
+        mimeType: true,
+        jobCostEntry: {
+          select: { payer: true, source: true, description: true, createdByUserId: true },
+        },
+        createdByUserId: true,
+      },
     });
     if (!existing) throw new NotFoundException("Anexo não encontrado");
 
-    return this.prisma.jobCostAttachment.update({
+    const role = await this.getUserRole(userId);
+    const isAdmin = this.isAdmin(role);
+
+    if (!isAdmin && existing.jobCostEntry.createdByUserId !== userId) {
+      try {
+        await this.activityFeed.create(companyId, userId, "JOB_COST_ATTACHMENT_DELETE_DENIED", "JobCostEntry", existing.jobCostEntryId, {
+          targetCreatedByUserId: existing.jobCostEntry.createdByUserId,
+          reason: "NOT_AUTHORIZED_TO_DELETE_ATTACHMENT",
+        });
+      } catch {
+        // best-effort
+      }
+      throw new ForbiddenException("Você só pode remover anexos de lançamentos que você mesmo criou.");
+    }
+
+    const before = {
+      fileName: existing.fileName,
+      mimeType: existing.mimeType,
+      description: existing.jobCostEntry.description,
+      payer: existing.jobCostEntry.payer,
+      source: existing.jobCostEntry.source,
+    };
+
+    const deleted = await this.prisma.jobCostAttachment.update({
       where: { id },
       data: {
         deletedAt: new Date(),
@@ -78,5 +203,21 @@ export class JobCostAttachmentsService {
         version: { increment: 1 },
       },
     });
+
+    await this.activityFeed.create(
+      companyId,
+      userId,
+      "JOB_COST_ATTACHMENT_DELETED",
+      "JobCostEntry",
+      deleted.jobCostEntryId,
+      {
+        before,
+        after: before,
+        permission: isAdmin && existing.createdByUserId !== userId ? "ADMIN_OVERRIDE" : "AUTHOR",
+        targetCreatedByUserId: existing.jobCostEntry.createdByUserId,
+      },
+    );
+
+    return deleted;
   }
 }

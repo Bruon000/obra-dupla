@@ -13,6 +13,7 @@ import ObrasList from "./pages/ObrasList";
 import ObraDetail from "./pages/ObraDetail";
 import NovaObra from "./pages/NovaObra";
 import Users from "./pages/Users";
+import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/obras/nova" element={<ProtectedRoute><NovaObra /></ProtectedRoute>} />
               <Route path="/obras/:id" element={<ProtectedRoute><ObraDetail /></ProtectedRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+              <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createUser, listUsers, type CompanyUser } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Users() {
   const [users, setUsers] = useState<CompanyUser[]>([]);
@@ -15,6 +16,16 @@ export default function Users() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("member");
   const [saving, setSaving] = useState(false);
+
+  const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === "ADMIN";
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState("member");
+  const [editPassword, setEditPassword] = useState("");
+  const [editingSaving, setEditingSaving] = useState(false);
 
   const sorted = useMemo(() => {
     return [...users].sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
@@ -62,6 +73,42 @@ export default function Users() {
       setError(e?.message ?? "Falha ao criar usuário");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const startEdit = (u: CompanyUser) => {
+    setEditingId(u.id);
+    setEditName(u.name ?? "");
+    setEditEmail(u.email ?? "");
+    setEditRole(u.role ?? "member");
+    setEditPassword("");
+    setError("");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditPassword("");
+    setError("");
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    setEditingSaving(true);
+    setError("");
+    try {
+      const { updateUser } = await import("@/lib/api");
+      const updated = await updateUser(editingId, {
+        name: editName.trim(),
+        email: editEmail.trim().toLowerCase(),
+        role: editRole.trim(),
+        ...(editPassword ? { password: editPassword } : {}),
+      });
+      setUsers((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+      cancelEdit();
+    } catch (e: any) {
+      setError(e?.message ?? "Falha ao editar usuário");
+    } finally {
+      setEditingSaving(false);
     }
   };
 
@@ -136,6 +183,56 @@ export default function Users() {
                       {u.role}
                     </span>
                   </div>
+
+                  {isAdmin ? (
+                    editingId === u.id ? (
+                      <div className="mt-3 space-y-2">
+                        <div className="space-y-1">
+                          <Label>Nome</Label>
+                          <Input className="h-10" value={editName} onChange={(e) => setEditName(e.target.value)} disabled={editingSaving} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>E-mail</Label>
+                          <Input
+                            className="h-10"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            type="email"
+                            disabled={editingSaving}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Papel</Label>
+                          <Input className="h-10" value={editRole} onChange={(e) => setEditRole(e.target.value)} disabled={editingSaving} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Nova senha (opcional)</Label>
+                          <Input
+                            className="h-10"
+                            value={editPassword}
+                            onChange={(e) => setEditPassword(e.target.value)}
+                            type="password"
+                            placeholder="Deixe em branco para manter"
+                            disabled={editingSaving}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={saveEdit} disabled={editingSaving} className="flex-1">
+                            {editingSaving ? "Salvando..." : "Salvar"}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={cancelEdit} disabled={editingSaving}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => startEdit(u)} disabled={editingSaving} className="flex-1">
+                          Editar
+                        </Button>
+                      </div>
+                    )
+                  ) : null}
                 </div>
               ))}
             </div>

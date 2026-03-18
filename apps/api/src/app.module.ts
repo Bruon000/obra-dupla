@@ -4,9 +4,12 @@ import { JobCostsModule } from "./job-costs/job-costs.module";
 import { UsersModule } from "./users/users.module";
 import { AuthModule } from "./auth/auth.module";
 import { JobSitesModule } from "./jobsites/jobsites.module";
+import { JobSiteMembersModule } from "./job-site-members/job-site-members.module";
+import { JobSiteDocumentsModule } from "./job-site-documents/job-site-documents.module";
+import { SupportModule } from "./support/support.module";
 
 @Module({
-  imports: [AuthModule, ActivityFeedModule, JobCostsModule, UsersModule, JobSitesModule],
+  imports: [AuthModule, ActivityFeedModule, JobCostsModule, UsersModule, JobSitesModule, JobSiteMembersModule, JobSiteDocumentsModule, SupportModule],
   controllers: [],
   providers: [],
 })

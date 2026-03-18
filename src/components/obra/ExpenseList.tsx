@@ -1,8 +1,10 @@
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import type { Expense, ConstructionMember } from '@/types';
-import { openAttachment } from '@/lib/attachments';
-import { Receipt, Pencil, Trash2, Paperclip } from 'lucide-react';
+import { downloadAttachment } from '@/lib/attachments';
+import { Receipt, Pencil, Trash2, Paperclip, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AttachmentPreviewDialog } from './AttachmentPreviewDialog';
+import { useState } from 'react';
 
 interface ExpenseListProps {
   members: ConstructionMember[];
@@ -10,9 +12,13 @@ interface ExpenseListProps {
   filterByUser?: string | null;
   onEdit?: (expense: Expense) => void;
   onDelete?: (expense: Expense) => void;
+  canEdit?: (expense: Expense) => boolean;
 }
 
-export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete }: ExpenseListProps) {
+export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete, canEdit }: ExpenseListProps) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<any | null>(null);
+
   const filtered = filterByUser
     ? expenses.filter((e) => e.paidByUserId === filterByUser)
     : expenses;
@@ -30,11 +36,23 @@ export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete 
     <div className="space-y-2">
       {filtered.map((expense) => {
         const payer = members.find((m) => m.userId === expense.paidByUserId);
+        const firstAttachment = expense.attachments?.[0] ?? null;
+        const heroThumb =
+          firstAttachment?.thumbnailBase64 && firstAttachment.mimeType?.startsWith("image/")
+            ? `data:${firstAttachment.mimeType};base64,${firstAttachment.thumbnailBase64}`
+            : null;
         return (
           <div
             key={expense.id}
-            className="bg-card rounded-xl p-4 shadow-sm border border-border animate-slide-up"
+            className="relative bg-card/60 rounded-3xl p-4 shadow-sm border border-border/50 animate-slide-up overflow-hidden"
           >
+            {heroThumb ? (
+              <div className="absolute inset-0 opacity-25">
+                <img src={heroThumb} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-br from-card/70 via-card/10 to-background/90" />
+              </div>
+            ) : null}
+
             <div className="flex items-start justify-between gap-2 mb-1">
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{expense.description}</p>
@@ -44,14 +62,26 @@ export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete 
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {onEdit && (
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(expense)} aria-label="Editar">
-                    <Pencil className="w-4 h-4" />
-                  </Button>
+                  canEdit ? (canEdit(expense) ? (
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(expense)} aria-label="Editar">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  ) : null) : (
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(expense)} aria-label="Editar">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  )
                 )}
                 {onDelete && (
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onDelete(expense)} aria-label="Excluir">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  canEdit ? (canEdit(expense) ? (
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onDelete(expense)} aria-label="Excluir">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  ) : null) : (
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onDelete(expense)} aria-label="Excluir">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )
                 )}
                 <span className="font-mono font-bold text-sm">
                   {formatCurrency(expense.totalValue)}
@@ -86,14 +116,35 @@ export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete 
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {expense.attachments.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => openAttachment(a)}
-                      className="text-[11px] font-medium text-primary hover:underline"
-                    >
-                      {a.fileName}
-                    </button>
+                    <div key={a.id} className="border border-border/60 bg-background/50 rounded-lg px-2 py-1 flex items-start gap-2 min-w-[220px]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewAttachment(a);
+                          setPreviewOpen(true);
+                        }}
+                        className="text-[11px] font-medium text-primary hover:underline text-left flex-1"
+                        aria-label={`Abrir ${a.fileName}`}
+                      >
+                        {a.fileName}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadAttachment(a)}
+                        className="shrink-0 p-1 rounded hover:bg-secondary/60"
+                        aria-label={`Baixar ${a.fileName}`}
+                      >
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        {a.createdByUser?.name ? (
+                          <div className="text-[10px] text-muted-foreground truncate">Enviado por {a.createdByUser.name}</div>
+                        ) : null}
+                        {a.createdAt ? (
+                          <div className="text-[10px] text-muted-foreground truncate">Data: {formatDate(a.createdAt)}</div>
+                        ) : null}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -101,6 +152,11 @@ export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete 
           </div>
         );
       })}
+      <AttachmentPreviewDialog
+        attachment={previewAttachment}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+      />
     </div>
   );
 }

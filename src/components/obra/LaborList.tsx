@@ -1,16 +1,24 @@
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, formatDate } from '@/lib/formatters';
 import type { LaborEntry, ConstructionMember } from '@/types';
-import { Hammer, Pencil, Trash2 } from 'lucide-react';
+import { Hammer, Pencil, Trash2, Paperclip, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { downloadAttachment } from '@/lib/attachments';
+import { AttachmentPreviewDialog } from './AttachmentPreviewDialog';
+import { useState } from 'react';
 
 interface LaborListProps {
   members: ConstructionMember[];
   entries: LaborEntry[];
   onEdit?: (entry: LaborEntry) => void;
   onDelete?: (entry: LaborEntry) => void;
+  canEdit?: (entry: LaborEntry) => boolean;
 }
 
-export function LaborList({ members, entries, onEdit, onDelete }: LaborListProps) {
+export function LaborList({ members, entries, onEdit, onDelete, canEdit }: LaborListProps) {
+  const isImage = (mimeType: string | undefined) => !!mimeType && mimeType.startsWith("image/");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<any | null>(null);
+
   if (entries.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -24,8 +32,22 @@ export function LaborList({ members, entries, onEdit, onDelete }: LaborListProps
     <div className="space-y-2">
       {entries.map((entry) => {
         const payer = members.find((m) => m.userId === entry.paidByUserId);
+        const firstAttachment = entry.attachments?.[0] ?? null;
+        const heroThumb =
+          firstAttachment?.thumbnailBase64 && isImage(firstAttachment.mimeType)
+            ? `data:${firstAttachment.mimeType};base64,${firstAttachment.thumbnailBase64}`
+            : null;
         return (
-          <div key={entry.id} className="bg-card rounded-xl p-4 shadow-sm border border-border animate-slide-up">
+          <div
+            key={entry.id}
+            className="relative bg-card/60 rounded-3xl p-4 shadow-sm border border-border/50 animate-slide-up overflow-hidden"
+          >
+            {heroThumb ? (
+              <div className="absolute inset-0 opacity-25">
+                <img src={heroThumb} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-br from-card/70 via-card/10 to-background/90" />
+              </div>
+            ) : null}
             <div className="flex items-start justify-between gap-2 mb-1">
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{entry.service}</p>
@@ -33,14 +55,26 @@ export function LaborList({ members, entries, onEdit, onDelete }: LaborListProps
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {onEdit && (
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(entry)} aria-label="Editar">
-                    <Pencil className="w-4 h-4" />
-                  </Button>
+                  canEdit ? (canEdit(entry) ? (
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(entry)} aria-label="Editar">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  ) : null) : (
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(entry)} aria-label="Editar">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  )
                 )}
                 {onDelete && (
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onDelete(entry)} aria-label="Excluir">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  canEdit ? (canEdit(entry) ? (
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onDelete(entry)} aria-label="Excluir">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  ) : null) : (
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onDelete(entry)} aria-label="Excluir">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )
                 )}
                 <span className="font-mono font-bold text-sm">{formatCurrency(entry.value)}</span>
               </div>
@@ -51,9 +85,54 @@ export function LaborList({ members, entries, onEdit, onDelete }: LaborListProps
             {entry.notes && (
               <p className="mt-2 pt-2 border-t border-border text-[11px] text-muted-foreground">Obs: {entry.notes}</p>
             )}
+            {entry.attachments && entry.attachments.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-border">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1 flex items-center gap-1">
+                  <Paperclip className="w-3 h-3" /> Comprovantes
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {entry.attachments.map((a) => (
+                    <div key={a.id} className="border border-border/60 bg-background/50 rounded-lg px-2 py-1 flex items-start gap-2 min-w-[220px]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewAttachment(a);
+                          setPreviewOpen(true);
+                        }}
+                        className="text-[11px] font-medium text-primary hover:underline text-left flex-1"
+                        aria-label={`Abrir ${a.fileName}`}
+                      >
+                        {a.fileName}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadAttachment(a)}
+                        className="shrink-0 p-1 rounded hover:bg-secondary/60"
+                        aria-label={`Baixar ${a.fileName}`}
+                      >
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        {a.createdByUser?.name ? (
+                          <div className="text-[10px] text-muted-foreground truncate">Enviado por {a.createdByUser.name}</div>
+                        ) : null}
+                        {a.createdAt ? (
+                          <div className="text-[10px] text-muted-foreground truncate">Data: {formatDate(a.createdAt)}</div>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         );
       })}
+      <AttachmentPreviewDialog
+        attachment={previewAttachment}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+      />
     </div>
   );
 }

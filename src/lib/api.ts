@@ -1,13 +1,24 @@
 /**
  * Base URL da API (NestJS). Para produção, defina VITE_API_URL no .env.
  */
-export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3005";
+const envBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+export const API_BASE = envBase || "http://localhost:3005";
 
 const STORAGE_TOKEN = "obra_dupla_token";
+const STORAGE_SUPPORT_COMPANY_ID = "obra_dupla_support_company_id";
 
 function getStoredToken(): string | null {
   try {
     return localStorage.getItem(STORAGE_TOKEN);
+  } catch {
+    return null;
+  }
+}
+
+function getStoredSupportCompanyId(): string | null {
+  try {
+    const v = localStorage.getItem(STORAGE_SUPPORT_COMPANY_ID);
+    return v ? String(v) : null;
   } catch {
     return null;
   }
@@ -18,6 +29,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers ?? undefined);
   if (!headers.has("Content-Type") && init?.body) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  const supportCompanyId = getStoredSupportCompanyId();
+  if (supportCompanyId) headers.set("X-Support-Company-Id", supportCompanyId);
 
   let res: Response;
   try {
@@ -49,6 +62,11 @@ export interface LoginResponse {
   user: AuthUser;
 }
 
+export type SupportCompany = {
+  id: string;
+  name: string;
+};
+
 export async function login(email: string, password: string): Promise<LoginResponse> {
   let res: Response;
   try {
@@ -69,6 +87,10 @@ export async function login(email: string, password: string): Promise<LoginRespo
     throw new Error(text ?? "Falha ao entrar. Verifique e-mail e senha.");
   }
   return res.json();
+}
+
+export async function listSupportCompanies(): Promise<SupportCompany[]> {
+  return apiFetch<SupportCompany[]>("/support/companies");
 }
 
 export type JobCostSource = "OBRA" | "LEGAL" | "LABOR";
@@ -92,6 +114,7 @@ export type JobCostEntry = {
   date: string; // ISO
   source: JobCostSource;
   category: string;
+  costType?: string | null;
   description: string;
   weekLabel?: string | null;
   quantity?: number | null;
@@ -149,6 +172,7 @@ export type UpsertJobCostInput = {
   date: string;
   source: JobCostSource;
   category: string;
+  costType?: string | null;
   description: string;
   weekLabel?: string | null;
   quantity?: number | null;
@@ -278,4 +302,71 @@ export async function listUsers(): Promise<CompanyUser[]> {
 
 export async function createUser(dto: CreateUserInput): Promise<CompanyUser> {
   return apiFetch<CompanyUser>("/users", { method: "POST", body: JSON.stringify(dto) });
+}
+
+export type UpdateUserInput = {
+  name?: string;
+  email?: string;
+  role?: string;
+  password?: string;
+};
+
+export async function updateUser(userId: string, dto: UpdateUserInput): Promise<CompanyUser> {
+  return apiFetch<CompanyUser>(`/users/${userId}`, { method: "PATCH", body: JSON.stringify(dto) });
+}
+
+// -----------------------------
+// Participação / sócios da obra
+// -----------------------------
+
+export type JobSiteMemberInput = {
+  userId: string;
+  name?: string;
+  sharePercent: number;
+  sortIndex: number;
+};
+
+export async function listJobSiteMembers(jobSiteId: string): Promise<Array<{ id: string; jobSiteId: string; userId: string; name: string; sharePercent: number; sortIndex: number }>> {
+  const qs = new URLSearchParams();
+  qs.set("jobSiteId", jobSiteId);
+  return apiFetch(`/job-site-members?${qs.toString()}`);
+}
+
+export async function setJobSiteMembers(jobSiteId: string, members: JobSiteMemberInput[]) {
+  return apiFetch(`/job-site-members`, { method: "PATCH", body: JSON.stringify({ jobSiteId, members }) });
+}
+
+// -----------------------------
+// Documentos da obra
+// -----------------------------
+
+export type JobSiteDocumentInput = {
+  jobSiteId: string;
+  category: string;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  storageType: "inline" | "local" | "remote";
+  fileDataBase64?: string | null;
+  thumbnailBase64?: string | null;
+  fileUrl?: string | null;
+};
+
+export async function listJobSiteDocuments(jobSiteId: string, category?: string) {
+  const qs = new URLSearchParams();
+  qs.set("jobSiteId", jobSiteId);
+  if (category) qs.set("category", category);
+  return apiFetch(`/job-site-documents?${qs.toString()}`);
+}
+
+export async function createJobSiteDocument(dto: JobSiteDocumentInput) {
+  return apiFetch(`/job-site-documents`, { method: "POST", body: JSON.stringify(dto) });
+}
+
+export async function deleteJobSiteDocument(id: string) {
+  return apiFetch(`/job-site-documents/${id}`, { method: "DELETE" });
+}
+
+export async function updateJobSiteDocument(id: string, dto: Omit<JobSiteDocumentInput, "jobSiteId"> & { jobSiteId: string }) {
+  return apiFetch(`/job-site-documents/${id}`, { method: "PATCH", body: JSON.stringify(dto) });
 }

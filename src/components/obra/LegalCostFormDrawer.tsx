@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LEGAL_TYPES } from '@/lib/job-cost-constants';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import type { LegalCost, ConstructionMember } from '@/types';
+import type { ExpenseAttachment, LegalCost, ConstructionMember } from '@/types';
+import { fileToExpenseAttachment } from '@/lib/attachments';
+import { Paperclip, X } from 'lucide-react';
 
 const legalCostSchema = z.object({
   description: z.string().min(3, 'Mínimo 3 caracteres'),
@@ -27,10 +29,11 @@ interface LegalCostFormDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingCost: LegalCost | null;
-  onSubmit: (data: LegalCostFormData, costId?: string) => void;
+  onSubmit: (data: LegalCostFormData & { attachments?: ExpenseAttachment[] }, costId?: string) => void;
 }
 
 export function LegalCostFormDrawer({ members, open, onOpenChange, editingCost, onSubmit }: LegalCostFormDrawerProps) {
+  const [attachments, setAttachments] = useState<ExpenseAttachment[]>([]);
   const { register, handleSubmit, reset, formState: { errors } } = useForm<LegalCostFormData>({
     resolver: zodResolver(legalCostSchema),
     defaultValues,
@@ -39,13 +42,30 @@ export function LegalCostFormDrawer({ members, open, onOpenChange, editingCost, 
   useEffect(() => {
     if (open && editingCost) {
       reset({ description: editingCost.description, type: editingCost.type, value: editingCost.value, paidByUserId: editingCost.paidByUserId, date: editingCost.date, notes: editingCost.notes || '' });
+      setAttachments(editingCost.attachments ?? []);
     } else if (open && !editingCost) reset(defaultValues);
+    if (!open) setAttachments([]);
   }, [open, editingCost, reset]);
 
   const handleFormSubmit = (data: LegalCostFormData) => {
-    onSubmit(data, editingCost?.id);
+    onSubmit({ ...data, attachments }, editingCost?.id);
     reset();
+    setAttachments([]);
     onOpenChange(false);
+  };
+
+  const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    for (let i = 0; i < files.length; i++) {
+      const att = await fileToExpenseAttachment(files[i]);
+      setAttachments((prev) => [...prev, att]);
+    }
+    e.target.value = '';
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
   return (
@@ -96,6 +116,45 @@ export function LegalCostFormDrawer({ members, open, onOpenChange, editingCost, 
             <Label>Observações</Label>
             <Input {...register('notes')} placeholder="Opcional" className="h-12 text-base" />
           </div>
+
+          <div>
+            <Label className="flex items-center gap-2">
+              <Paperclip className="w-4 h-4" />
+              Anexos / comprovantes
+            </Label>
+            <div className="mt-2 space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <label className="flex items-center justify-center gap-2 h-12 px-3 rounded-lg border border-dashed border-border bg-muted/50 cursor-pointer hover:bg-muted transition-colors text-sm text-muted-foreground">
+                  <input type="file" className="sr-only" accept="image/*,.pdf" multiple onChange={onFileSelect} />
+                  Adicionar foto / PDF
+                </label>
+                <label className="flex items-center justify-center gap-2 h-12 px-3 rounded-lg border border-border bg-background cursor-pointer hover:bg-muted/30 transition-colors text-sm text-muted-foreground">
+                  <input
+                    type="file"
+                    className="sr-only"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    onChange={onFileSelect}
+                  />
+                  Tirar foto
+                </label>
+              </div>
+              {attachments.length > 0 && (
+                <ul className="space-y-1">
+                  {attachments.map((a) => (
+                    <li key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+                      <span className="truncate">{a.fileName}</span>
+                      <button type="button" onClick={() => removeAttachment(a.id)} className="shrink-0 p-1 text-destructive hover:bg-destructive/10 rounded" aria-label="Remover">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
           <Button type="submit" size="lg" className="w-full h-14 text-base font-bold">{editingCost ? 'Salvar alterações' : 'Salvar Custo Legal'}</Button>
         </form>
       </DrawerContent>

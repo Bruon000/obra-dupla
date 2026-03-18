@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ActivityFeedService } from "../activity-feed/activity-feed.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { ListJobCostsDto } from "./dto/list-job-costs.dto";
@@ -15,6 +15,43 @@ export class JobCostsService {
   private prisma: PrismaService,
   private activityFeed: ActivityFeedService,
 ) {}
+
+  private async getUserRole(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    return user?.role ?? null;
+  }
+
+  private isAdmin(role: string | null): boolean {
+    return role === "ADMIN";
+  }
+
+  private async getAllowedPayersForNonAdmin(companyId: string, jobSiteId: string, userId: string): Promise<string[]> {
+    // Mantém coerência com o frontend atual:
+    // - membro index 0 => "BRUNO"
+    // - membro index 1 => "ROBERTO"
+    // - demais => "OUTRO"
+    const members = await this.prisma.jobSiteMember.findMany({
+      where: { companyId, jobSiteId, deletedAt: null },
+      orderBy: [{ sortIndex: "asc" }, { createdAt: "asc" }],
+      select: { userId: true },
+    });
+
+    const idx = members.findIndex((m) => m.userId === userId);
+    if (idx < 0) {
+      // Se o membro não estiver configurado, não faz sentido permitir atribuição de payer.
+      throw new ForbiddenException("Participação da obra ainda não configurada para este usuário.");
+    }
+
+    let allowedPartnerPayer = "OUTRO";
+    if (idx === 0) allowedPartnerPayer = "BRUNO";
+    if (idx === 1) allowedPartnerPayer = "ROBERTO";
+
+    // "CAIXA" é um payer de cenário/conta geral e não representa autoria por sócio.
+    return Array.from(new Set([allowedPartnerPayer, "CAIXA"]));
+  }
 
   async list(companyId: string, query: ListJobCostsDto) {
     return this.prisma.jobCostEntry.findMany({
@@ -41,6 +78,9 @@ export class JobCostsService {
         attachments: {
           where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
+          include: {
+            createdByUser: { select: { id: true, name: true, email: true } },
+          },
         },
       },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
@@ -48,6 +88,21 @@ export class JobCostsService {
   }
 
   async create(companyId: string, userId: string, dto: UpsertJobCostDto) {
+    const role = await this.getUserRole(userId);
+    const isAdmin = this.isAdmin(role);
+
+    if (!isAdmin) {
+      const allowedPayers = await this.getAllowedPayersForNonAdmin(companyId, dto.jobSiteId, userId);
+      if (!allowedPayers.includes(dto.payer)) {
+        await this.activityFeed.create(companyId, userId, "JOB_COST_CREATE_DENIED", "JobCostEntry", dto.jobSiteId, {
+          reason: "NOT_AUTHORIZED_TO_SET_PAYER",
+          allowedPayers,
+          requestedPayer: dto.payer,
+        });
+        throw new ForbiddenException("Você só pode usar como pagador a sua própria participação.");
+      }
+    }
+
     const created = await this.prisma.jobCostEntry.create({
       data: {
         companyId,
@@ -55,6 +110,7 @@ export class JobCostsService {
         date: new Date(dto.date),
         source: dto.source,
         category: dto.category,
+        costType: dto.costType ?? "Material",
         description: dto.description,
         weekLabel: dto.weekLabel ?? null,
         quantity: dto.quantity ?? null,
@@ -75,6 +131,9 @@ export class JobCostsService {
         attachments: {
           where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
+          include: {
+            createdByUser: { select: { id: true, name: true, email: true } },
+          },
         },
       },
     });
@@ -100,10 +159,51 @@ export class JobCostsService {
   async update(companyId: string, userId: string, id: string, dto: UpsertJobCostDto) {
     const existing = await this.prisma.jobCostEntry.findFirst({
       where: { id, companyId, deletedAt: null },
+      select: {
+        payer: true,
+        id: true,
+        jobSiteId: true,
+        deletedAt: true,
+        description: true,
+        totalAmount: true,
+        category: true,
+        source: true,
+        costType: true,
+        createdByUserId: true,
+      },
     });
 
     if (!existing) {
       throw new NotFoundException("Lançamento não encontrado");
+    }
+
+    const role = await this.getUserRole(userId);
+    const isAdmin = this.isAdmin(role);
+
+    if (!isAdmin && existing.createdByUserId !== userId) {
+      // Mantém rastreabilidade mesmo em tentativas indevidas.
+      try {
+        await this.activityFeed.create(companyId, userId, "JOB_COST_EDIT_DENIED", "JobCostEntry", existing.id, {
+          targetCreatedByUserId: existing.createdByUserId,
+          reason: "NOT_AUTHORIZED_TO_EDIT",
+        });
+      } catch {
+        // não falhar a operação principal por causa do log de auditoria
+      }
+      throw new ForbiddenException("Você só pode editar lançamentos que você mesmo criou.");
+    }
+
+    if (!isAdmin) {
+      const allowedPayers = await this.getAllowedPayersForNonAdmin(companyId, existing.jobSiteId, userId);
+      if (!allowedPayers.includes(dto.payer)) {
+        await this.activityFeed.create(companyId, userId, "JOB_COST_EDIT_DENIED", "JobCostEntry", existing.id, {
+          targetCreatedByUserId: existing.createdByUserId,
+          reason: "NOT_AUTHORIZED_TO_SET_PAYER",
+          allowedPayers,
+          requestedPayer: dto.payer,
+        });
+        throw new ForbiddenException("Você só pode usar como pagador a sua própria participação.");
+      }
     }
 
     const updated = await this.prisma.jobCostEntry.update({
@@ -113,6 +213,7 @@ export class JobCostsService {
         date: new Date(dto.date),
         source: dto.source,
         category: dto.category,
+        costType: dto.costType ?? existing.costType ?? "Material",
         description: dto.description,
         weekLabel: dto.weekLabel ?? null,
         quantity: dto.quantity ?? null,
@@ -133,6 +234,9 @@ export class JobCostsService {
         attachments: {
           where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
+          include: {
+            createdByUser: { select: { id: true, name: true, email: true } },
+          },
         },
       },
     });
@@ -158,6 +262,8 @@ export class JobCostsService {
           category: updated.category,
           source: updated.source,
         },
+        permission: isAdmin ? (existing.createdByUserId !== userId ? "ADMIN_OVERRIDE" : "ADMIN") : "AUTHOR",
+        targetCreatedByUserId: existing.createdByUserId,
       },
     );
 
@@ -167,10 +273,26 @@ export class JobCostsService {
   async remove(companyId: string, userId: string, id: string) {
     const existing = await this.prisma.jobCostEntry.findFirst({
       where: { id, companyId, deletedAt: null },
+      select: { payer: true, id: true, deletedAt: true, description: true, totalAmount: true, category: true, source: true, createdByUserId: true },
     });
 
     if (!existing) {
       throw new NotFoundException("Lançamento não encontrado");
+    }
+
+    const role = await this.getUserRole(userId);
+    const isAdmin = this.isAdmin(role);
+
+    if (!isAdmin && existing.createdByUserId !== userId) {
+      try {
+        await this.activityFeed.create(companyId, userId, "JOB_COST_DELETE_DENIED", "JobCostEntry", existing.id, {
+          targetCreatedByUserId: existing.createdByUserId,
+          reason: "NOT_AUTHORIZED_TO_DELETE",
+        });
+      } catch {
+        // best-effort
+      }
+      throw new ForbiddenException("Você só pode excluir lançamentos que você mesmo criou.");
     }
 
     const deleted = await this.prisma.jobCostEntry.update({
@@ -188,6 +310,9 @@ export class JobCostsService {
         attachments: {
           where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
+          include: {
+            createdByUser: { select: { id: true, name: true, email: true } },
+          },
         },
       },
     });
@@ -202,6 +327,8 @@ export class JobCostsService {
         description: existing.description,
         totalAmount: existing.totalAmount,
         payer: existing.payer,
+        permission: isAdmin ? (existing.createdByUserId !== userId ? "ADMIN_OVERRIDE" : "ADMIN") : "AUTHOR",
+        targetCreatedByUserId: existing.createdByUserId,
       },
     );
 

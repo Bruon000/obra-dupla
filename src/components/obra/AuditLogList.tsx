@@ -1,11 +1,12 @@
 import { formatDate } from '@/lib/formatters';
-import { FileText } from 'lucide-react';
+import { FileText, ShieldAlert, PlusCircle, PencilLine, Trash2 } from 'lucide-react';
 
 export type AuditEntry = {
   id: string;
   action: 'create' | 'update' | 'delete';
   entityType: 'gasto' | 'legal' | 'mao-de-obra' | 'venda' | 'obra';
   entityLabel: string;
+  actorName?: string;
   at: string;
 };
 
@@ -41,22 +42,52 @@ export function AuditLogList({ entries }: AuditLogListProps) {
   return (
     <div className="space-y-2">
       {entries.map((entry) => (
-        <div
-          key={entry.id}
-          className="flex items-start gap-3 rounded-xl p-3 border border-border bg-card text-sm"
-        >
-          <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-            entry.action === 'create' ? 'bg-primary/15 text-primary' :
-            entry.action === 'update' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' :
-            'bg-destructive/15 text-destructive'
-          }`}>
-            {actionLabel[entry.action]}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-medium truncate">{entityLabel[entry.entityType]}: {entry.entityLabel}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{formatDate(entry.at)}</p>
-          </div>
-        </div>
+        (() => {
+          const isDenied = /^Tentativa negada:/i.test(String(entry.entityLabel ?? ""));
+          const badgeText = isDenied ? "Negada" : actionLabel[entry.action];
+          const badgeClass = isDenied
+            ? "bg-destructive/15 text-destructive border border-destructive/25"
+            : entry.action === 'create'
+              ? 'bg-primary/10 text-primary border border-primary/20'
+              : entry.action === 'update'
+                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'
+                : 'bg-destructive/10 text-destructive border border-destructive/20';
+
+          const Icon =
+            isDenied ? ShieldAlert : entry.action === 'create' ? PlusCircle : entry.action === 'update' ? PencilLine : Trash2;
+
+          return (
+            <div key={entry.id} className="flex gap-3 items-start">
+              <div className="relative mt-1">
+                {/* Linha do timeline */}
+                <div className={`h-7 w-px bg-border/40`} />
+                <div
+                  className={[
+                    "absolute left-[-6px] top-0 h-3 w-3 rounded-full ring-2",
+                    isDenied ? "bg-destructive ring-destructive/25" : entry.action === 'create' ? "bg-primary ring-primary/25" : entry.action === 'update' ? "bg-amber-500 ring-amber-500/20" : "bg-destructive ring-destructive/25",
+                  ].join(' ')}
+                />
+              </div>
+              <div className="min-w-0 flex-1 rounded-xl border border-border/40 bg-card/50 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <span className={`shrink-0 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${badgeClass}`}>
+                    <Icon className="w-3.5 h-3.5" />
+                    {badgeText}
+                  </span>
+                </div>
+                <p className="mt-2 font-medium text-sm truncate">
+                  {entityLabel[entry.entityType]}: {entry.entityLabel}
+                </p>
+                {entry.actorName ? (
+                  <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                    por {entry.actorName}
+                  </p>
+                ) : null}
+                <p className="text-[11px] text-muted-foreground mt-1">{formatDate(entry.at)}</p>
+              </div>
+            </div>
+          );
+        })()
       ))}
     </div>
   );

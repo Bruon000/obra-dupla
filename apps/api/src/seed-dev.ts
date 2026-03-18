@@ -17,24 +17,42 @@ function hashPassword(password: string): string {
 }
 
 async function main() {
-  const company = await prisma.company.create({
-    data: {
-      name: "Obra Dupla Dev",
-    },
-  });
-
   const devPassword = process.env.DEV_USER_PASSWORD ?? "123456";
-  const user = await prisma.user.create({
-    data: {
-      email: "dev@obradupla.local",
+  const email = "dev@obradupla.local";
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+
+  const company =
+    existing?.companyId
+      ? await prisma.company.findUnique({ where: { id: existing.companyId } })
+      : null;
+
+  const ensuredCompany =
+    company ??
+    (await prisma.company.create({
+      data: {
+        name: "Obra Dupla Dev",
+      },
+    }));
+
+  const user = await prisma.user.upsert({
+    where: { email },
+    create: {
+      email,
       passwordHash: hashPassword(devPassword),
       name: "Dev User",
       role: "ADMIN",
-      companyId: company.id,
+      companyId: ensuredCompany.id,
+    },
+    update: {
+      passwordHash: hashPassword(devPassword),
+      name: "Dev User",
+      role: "ADMIN",
+      companyId: ensuredCompany.id,
     },
   });
 
-  console.log("COMPANY_ID=", company.id);
+  console.log("COMPANY_ID=", ensuredCompany.id);
   console.log("USER_ID=", user.id);
   console.log("Login: dev@obradupla.local /", devPassword);
 }

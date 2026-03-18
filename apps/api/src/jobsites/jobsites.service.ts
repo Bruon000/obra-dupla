@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateJobSiteDto } from "./dto/create-jobsite.dto";
 import { UpdateJobSiteDto } from "./dto/update-jobsite.dto";
+import { ActivityFeedService } from "../activity-feed/activity-feed.service";
 
 function parseDateOnly(value?: string | null): Date | null {
   if (!value) return null;
@@ -13,7 +14,35 @@ function parseDateOnly(value?: string | null): Date | null {
 
 @Injectable()
 export class JobSitesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityFeed: ActivityFeedService,
+  ) {}
+
+  private async getUserRole(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    return user?.role ?? null;
+  }
+
+  private async ensureAdminOrDeny(companyId: string, actorUserId: string, eventType: string, entityId: string) {
+    const role = await this.getUserRole(actorUserId);
+    if (role === "ADMIN") return;
+
+    // Auditoria de tentativas negadas (forense).
+    try {
+      await this.activityFeed.create(companyId, actorUserId, eventType, "JobSite", entityId, {
+        reason: "NOT_AUTHORIZED_TO_EDIT_JOB_SITE",
+        actorRole: role,
+      });
+    } catch {
+      // best-effort
+    }
+
+    throw new ForbiddenException("Apenas admin pode editar a obra.");
+  }
 
   list(companyId: string) {
     return this.prisma.jobSite.findMany({
@@ -45,13 +74,24 @@ export class JobSitesService {
     });
   }
 
-  async update(companyId: string, id: string, dto: UpdateJobSiteDto) {
+  async update(companyId: string, userId: string, id: string, dto: UpdateJobSiteDto) {
+    await this.ensureAdminOrDeny(companyId, userId, "JOB_SITE_EDIT_DENIED", id);
     const existing = await this.prisma.jobSite.findFirst({
       where: { companyId, id, deletedAt: null },
     });
     if (!existing) throw new NotFoundException("Obra não encontrada");
 
-    return this.prisma.jobSite.update({
+    const before = {
+      title: existing.title,
+      address: existing.address,
+      notes: existing.notes,
+      status: existing.status,
+      startDate: existing.startDate,
+      endDate: existing.endDate,
+      saleValue: existing.saleValue,
+    };
+
+    const updated = await this.prisma.jobSite.update({
       where: { id },
       data: {
         ...(dto.title !== undefined ? { title: dto.title } : {}),
@@ -63,18 +103,40 @@ export class JobSitesService {
         ...(dto.saleValue !== undefined ? { saleValue: dto.saleValue ?? 0 } : {}),
       },
     });
+
+    await this.activityFeed.create(companyId, userId, "JOB_SITE_UPDATED", "JobSite", updated.id, {
+      before,
+      after: {
+        title: updated.title,
+        address: updated.address,
+        notes: updated.notes,
+        status: updated.status,
+        startDate: updated.startDate,
+        endDate: updated.endDate,
+        saleValue: updated.saleValue,
+      },
+    });
+
+    return updated;
   }
 
-  async remove(companyId: string, id: string) {
+  async remove(companyId: string, userId: string, id: string) {
+    await this.ensureAdminOrDeny(companyId, userId, "JOB_SITE_DELETE_DENIED", id);
     const existing = await this.prisma.jobSite.findFirst({
       where: { companyId, id, deletedAt: null },
     });
     if (!existing) throw new NotFoundException("Obra não encontrada");
 
-    return this.prisma.jobSite.update({
+    const deleted = await this.prisma.jobSite.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+
+    await this.activityFeed.create(companyId, userId, "JOB_SITE_DELETED", "JobSite", deleted.id, {
+      before: { title: existing.title, saleValue: existing.saleValue },
+    });
+
+    return deleted;
   }
 }
 
