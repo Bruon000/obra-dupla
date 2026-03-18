@@ -247,7 +247,7 @@ const ObraDetail = () => {
         createdAt: m.createdAt ?? undefined,
       }));
       setMembers(mappedMembers);
-      setDocuments(docsRes ?? []);
+      setDocuments((docsRes ?? []) as JobSiteDocument[]);
 
       const latest = items.slice(0, 20);
       const feedLists = await Promise.all(
