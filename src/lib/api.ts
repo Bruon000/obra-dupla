@@ -71,7 +71,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   } catch {
-    throw new Error("Não foi possível conectar à API. Verifique se a API está rodando em http://localhost:3005.");
+    throw new Error(
+      `Não foi possível conectar à API (${API_BASE}). Em desenvolvimento rode também a API (pnpm dev:api). Na Netlify defina VITE_API_URL e faça novo deploy.`,
+    );
   }
 
   if (!res.ok) {
