@@ -1,0 +1,25 @@
+# Banco local para desenvolvimento (Canteiro / obra-dupla)
+# Uso: docker compose up -d
+# String de conexão está em apps/api/.env.example
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: obra-dupla-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: obra
+      POSTGRES_PASSWORD: obra_dev_local
+      POSTGRES_DB: obra_dupla
+    ports:
+      - "5434:5432"
+    volumes:
+      - obra_dupla_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obra -d obra_dupla"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  obra_dupla_pgdata:
