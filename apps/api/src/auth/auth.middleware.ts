@@ -12,21 +12,17 @@ export class AuthMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: any, res: any, next: any) {
-    const rawPath: string = req.path || req.url || "";
-    const path = rawPath.toString();
+    // path pode variar com proxies; originalUrl costuma ser o mais fiável.
+    const rawPath = String(req.originalUrl || req.path || req.url || "").split("?")[0];
+    const path = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
 
-    // Público: health check (Render/browser) e login/registo
+    // Rotas públicas já não passam neste middleware (exclude no AuthModule).
+    // Mantemos checagens defensivas por si o exclude falhar nalgum edge case.
     if (
       path === "/" ||
-      path === "" ||
       path.startsWith("/health") ||
-      path.startsWith("health")
+      path.startsWith("/auth")
     ) {
-      return next();
-    }
-
-    // Libera todas as rotas de autenticação (com ou sem barra inicial)
-    if (path.startsWith("/auth") || path.startsWith("auth")) {
       return next();
     }
 
