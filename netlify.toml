@@ -1,0 +1,10 @@
+# Netlify: força npm + pasta dist (evita detecção errada por bun.lock / pnpm-lock).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA (React Router): qualquer rota → index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
