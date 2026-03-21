@@ -11,6 +11,8 @@ Guia fechado para o stack **front na Netlify** + **API no Render** + **Postgres 
 
 ---
 
+**Heap / OOM no Render:** vê [`docs/RENDER-OOM.md`](RENDER-OOM.md) (Start Command = `npm start`).
+
 ## A) Render — API (`apps/api`)
 
 1. **Web Service** → repo `Bruon000/obra-dupla`, branch `main`.

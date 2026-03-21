@@ -75,7 +75,7 @@ export class JobCostsService {
             }
           : {}),
       },
-      take: includeAttachments ? 200 : 800,
+      take: includeAttachments ? 100 : 400,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: {
         createdByUser: { select: { id: true, name: true, email: true } },

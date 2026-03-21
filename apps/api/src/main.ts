@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { config } from "dotenv";
 import { resolve } from "node:path";
+import * as v8 from "node:v8";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import type { NestExpressApplication } from "@nestjs/platform-express";
@@ -40,6 +41,10 @@ async function bootstrap() {
   const port = Number(process.env.PORT ?? 3005);
   const host = process.env.HOST ?? "0.0.0.0";
   await app.listen(port, host);
+  const heapMb = Math.round(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
+  console.log(
+    `[heap] heap_size_limit_mb=${heapMb} (esperado ~384; se ~256, o Start no Render deve ser "npm start" em apps/api, não "node dist/main.js" sem flags)`,
+  );
   console.log(`API rodando em http://localhost:${port}`);
   if (host === "0.0.0.0") {
     console.log(`API acessivel na rede local na porta ${port} (use o IP da maquina).`);
