@@ -93,8 +93,9 @@ A API já usa `origin: true` no Nest; o front em `https://*.netlify.app` consegu
 
 ### Erro 500 em `/jobsites` ou `/users`
 
-1. No browser, **F12 → Network** → clica no pedido que falhou → **Response**. Se vier `prismaCode: "P2022"`, a base no Supabase **não tem as colunas** do schema atual — corre `npx prisma migrate deploy` contra essa base (com `DATABASE_URL_DIRECT`, ver `docs/SAAS-ENV.md`).
-2. Depois de atualizar a API no Render, os logs do serviço também mostram o código Prisma em caso de erro.
+1. No browser, **F12 → Network** → **Response**. A API pode devolver `prismaCode` (ex. **P2022** = coluna em falta → `prisma migrate deploy` na BD de produção) ou `code: "DB_INIT"` (ligação PostgreSQL / `DATABASE_URL`).
+2. **Logs no Render:** Dashboard do serviço → **Logs** — a linha `HTTP ERROR` mostra a mensagem e stack completas.
+3. **Debug temporário:** no Render, variável **`EXPOSE_API_ERRORS=true`** — a resposta JSON passa a incluir `message`/`detail`/`stack` do erro real. **Desliga depois** de corrigir.
 
 ---
 
