@@ -39,9 +39,10 @@ Em desenvolvimento o front aponta para a API em `http://<teu-host>:3005` (mesmo 
 
 ### Produção / Supabase / deploy
 
+- **Site online (Netlify + Render):** [`docs/ONLINE-NETLIFY-RENDER.md`](docs/ONLINE-NETLIFY-RENDER.md) — checklist com `VITE_API_URL`, Render e migrações.  
 - Variáveis e billing: [`docs/SAAS-ENV.md`](docs/SAAS-ENV.md)  
-- Deploy: [`docs/DEPLOY-CANTEIRO.md`](docs/DEPLOY-CANTEIRO.md)  
-- Guia rápido local (detalhes): [`docs/USO-LOCAL.md`](docs/USO-LOCAL.md)
+- Deploy geral / APK: [`docs/DEPLOY-CANTEIRO.md`](docs/DEPLOY-CANTEIRO.md)  
+- Guia rápido local: [`docs/USO-LOCAL.md`](docs/USO-LOCAL.md)
 
 ### Segurança
 

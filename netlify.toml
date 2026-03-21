@@ -1,7 +1,12 @@
 # Netlify: força npm + pasta dist (evita detecção errada por bun.lock / pnpm-lock).
+# OBRIGATÓRIO no painel: VITE_API_URL = https://sua-api.onrender.com (sem barra final)
+# Ver: docs/ONLINE-NETLIFY-RENDER.md
 [build]
-  command = "npm run build"
+  command = "npm install && npm run build"
   publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
 
 # SPA (React Router): qualquer rota → index.html
 [[redirects]]

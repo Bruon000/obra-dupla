@@ -1,8 +1,9 @@
 # Blueprint opcional: Render → New Blueprint → conectar repo.
-# Ajuste o nome do serviço e adicione secrets no painel (DATABASE_URL, JWT_SECRET, R2_*, etc.).
+# Secrets no painel: DATABASE_URL, JWT_SECRET, (opcional) DATABASE_URL_DIRECT, R2_*, SUPABASE_*.
+# Guia passo a passo: docs/ONLINE-NETLIFY-RENDER.md
 services:
   - type: web
-    name: canteiro-api
+    name: obra-dupla
     runtime: node
     rootDir: apps/api
     buildCommand: npm install && npm run build
