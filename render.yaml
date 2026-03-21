@@ -12,5 +12,6 @@ services:
       - key: HOST
         value: 0.0.0.0
       # Plano grátis: evita OOM em picos de JSON (lista com muitos dados)
+      # Plano grátis ~512MB RAM total — 384MB heap deixa margem ao SO/Prisma
       - key: NODE_OPTIONS
-        value: --max-old-space-size=512
+        value: --max-old-space-size=384

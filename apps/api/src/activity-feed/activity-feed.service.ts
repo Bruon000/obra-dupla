@@ -33,7 +33,7 @@ export class ActivityFeedService {
         entityType,
         entityId,
       },
-      take: 500,
+      take: 150,
       orderBy: {
         createdAt: "desc",
       },

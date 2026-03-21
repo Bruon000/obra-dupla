@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node -r ts-node/register -r tsconfig-paths/register src/main.ts",
     "build": "npx prisma generate && npx tsc -p tsconfig.json",
-    "start": "node dist/main.js",
+    "start": "node --max-old-space-size=384 dist/main.js",
     "start:dev": "node -r ts-node/register -r tsconfig-paths/register src/main.ts",
     "db:migrate": "npx prisma migrate deploy",
     "db:seed": "npx ts-node src/seed-dev.ts"

@@ -85,7 +85,25 @@ export class JobCostsService {
           ? {
               where: { deletedAt: null },
               orderBy: { createdAt: "desc" },
-              include: {
+              // Nunca devolver base64 na lista — mesmo com includeAttachments=true
+              // o front só precisa de metadados + fileUrl; comprovante completo via edição/detalhe.
+              select: {
+                id: true,
+                companyId: true,
+                jobCostEntryId: true,
+                fileName: true,
+                mimeType: true,
+                storageType: true,
+                fileUrl: true,
+                version: true,
+                deviceId: true,
+                lastSyncedAt: true,
+                deletedAt: true,
+                createdByUserId: true,
+                updatedByUserId: true,
+                deletedByUserId: true,
+                createdAt: true,
+                updatedAt: true,
                 createdByUser: { select: { id: true, name: true, email: true } },
               },
             }
