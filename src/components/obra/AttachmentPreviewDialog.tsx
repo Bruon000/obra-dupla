@@ -3,8 +3,8 @@ import type { JobSiteDocument } from "@/types";
 import type { ExpenseAttachment } from "@/types";
 import { Button } from "@/components/ui/button";
 import { downloadAttachment } from "@/lib/attachments";
-import { Download } from "lucide-react";
-import { useMemo } from "react";
+import { Download, ExternalLink } from "lucide-react";
+import { useMemo, useEffect, useState } from "react";
 
 type Downloadable = Pick<ExpenseAttachment, "fileName" | "mimeType" | "fileDataBase64"> & { fileUrl?: string | null };
 type Props = {
@@ -14,6 +14,8 @@ type Props = {
 };
 
 export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Props) {
+  const [iframeBlobUrl, setIframeBlobUrl] = useState<string | null>(null);
+
   const dataUrl = useMemo(() => {
     if (!attachment) return null;
     const fileUrl = (attachment as any).fileUrl;
@@ -28,7 +30,47 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
   const fileName = (attachment as any)?.fileName as string | undefined;
 
   const isImage = !!mimeType && mimeType.startsWith("image/");
-  const isPdf = !!mimeType && (mimeType === "application/pdf" || mimeType.includes("pdf"));
+  const useIframe = !isImage && !!dataUrl;
+
+  // Data URL em iframe costuma ficar preto (PDF e outros). Usar blob URL para qualquer anexo no iframe.
+  useEffect(() => {
+    if (!open || !useIframe || !(attachment as any)?.fileDataBase64) {
+      if (iframeBlobUrl) {
+        URL.revokeObjectURL(iframeBlobUrl);
+        setIframeBlobUrl(null);
+      }
+      return;
+    }
+    let url: string | null = null;
+    try {
+      const base64 = (attachment as any).fileDataBase64 as string;
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: mimeType || "application/octet-stream" });
+      url = URL.createObjectURL(blob);
+      setIframeBlobUrl(url);
+    } catch {
+      setIframeBlobUrl(null);
+    }
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+      setIframeBlobUrl(null);
+    };
+  }, [open, useIframe, attachment, mimeType]);
+
+  useEffect(() => {
+    if (!open && iframeBlobUrl) {
+      URL.revokeObjectURL(iframeBlobUrl);
+      setIframeBlobUrl(null);
+    }
+  }, [open, iframeBlobUrl]);
+
+  const openInNewTab = () => {
+    if (dataUrl) window.open(dataUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const iframeSrc = (attachment as any)?.fileUrl || iframeBlobUrl;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -41,24 +83,57 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
             </DialogDescription>
           </DialogHeader>
 
-          <div className="w-full">
+          <div className="w-full min-h-[200px] bg-muted/30 rounded-md flex items-center justify-center overflow-hidden">
             {dataUrl && isImage ? (
               <img src={dataUrl} alt={fileName ?? "arquivo"} className="w-full max-h-[70vh] object-contain rounded-md border border-border" />
-            ) : dataUrl && (isPdf || !isImage) ? (
-              <iframe
-                title={fileName ?? "Arquivo"}
-                src={dataUrl}
-                className="w-full"
-                style={{ height: "70vh", border: "1px solid var(--border)" }}
-              />
+            ) : useIframe ? (
+              iframeSrc ? (
+                <iframe
+                  key={iframeSrc}
+                  title={fileName ?? "Arquivo"}
+                  src={iframeSrc}
+                  className="w-full rounded-md border border-border bg-background"
+                  style={{ height: "70vh" }}
+                />
+              ) : (
+                <div className="w-full p-6 flex flex-col items-center justify-center gap-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Use &quot;Abrir em nova aba&quot; ou &quot;Baixar&quot; para visualizar o arquivo.
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <Button type="button" variant="outline" size="sm" onClick={openInNewTab} className="gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      Abrir em nova aba
+                    </Button>
+                    {attachment && (
+                      <Button type="button" variant="default" size="sm" onClick={() => downloadAttachment(attachment as any)} className="gap-2">
+                        <Download className="w-4 h-4" />
+                        Baixar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )
             ) : (
-              <div className="text-sm text-muted-foreground">
-                Não foi possível gerar prévia. Use o download para visualizar.
+              <div className="text-sm text-muted-foreground p-6 text-center space-y-3">
+                <p>Não foi possível gerar prévia. Use o botão Baixar para abrir no seu dispositivo.</p>
+                {attachment && (
+                  <Button type="button" variant="outline" onClick={() => downloadAttachment(attachment as any)} className="gap-2">
+                    <Download className="w-4 h-4" />
+                    Baixar
+                  </Button>
+                )}
               </div>
             )}
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {useIframe && dataUrl && (
+              <Button type="button" variant="ghost" size="sm" onClick={openInNewTab} className="gap-2">
+                <ExternalLink className="w-4 h-4" />
+                Abrir em nova aba
+              </Button>
+            )}
             {attachment ? (
               <Button
                 type="button"

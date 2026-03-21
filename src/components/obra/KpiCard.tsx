@@ -60,6 +60,8 @@ export function KpiCard({
 }) {
   const v = variantStyles[variant];
   const isMain = emphasis === 'main';
+  const textureOpacity = backgroundImage?.src ? 'opacity-[0.08]' : 'opacity-[0.14]';
+  const bottomFade = backgroundImage?.src ? 'to-card/75' : 'to-card/90';
   const iconBg =
     variant === 'primary'
       ? 'bg-primary/10 border-primary/25'
@@ -96,11 +98,22 @@ export function KpiCard({
             }}
           />
           {/* Ajuda a “cortar” numeração embutida nas artes */}
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent to-card/90" />
+          <div
+            className={[
+              'absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent',
+              bottomFade,
+            ].join(' ')}
+          />
         </>
       ) : null}
       {/* Micro-textura blueprint/concreto (bem sutil) */}
-      <div className="absolute inset-0 opacity-[0.14] bg-[linear-gradient(rgba(255,255,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[size:28px_28px]" />
+      <div
+        className={[
+          'absolute inset-0',
+          textureOpacity,
+          'bg-[linear-gradient(rgba(255,255,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[size:28px_28px]',
+        ].join(' ')}
+      />
       {/* Marca d’água (imagem) — discreta e industrial */}
       {Icon ? (
         <div className="absolute right-3 bottom-3 pointer-events-none opacity-[0.07]">

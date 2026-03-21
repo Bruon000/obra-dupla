@@ -105,6 +105,10 @@ export function SociosSettlementHero({
                   <span className="text-muted-foreground/60">•</span>
                   <span className="whitespace-nowrap">Recalcula automaticamente</span>
                 </div>
+
+                <div className="mt-2 text-[11px] text-muted-foreground/80 font-semibold">
+                  Acerto de custos pagos vs. parte ideal (se alguém pagou mais/menos no rateio).
+                </div>
               </div>
             ) : (
               <div className="mt-3 text-sm md:text-base text-muted-foreground font-semibold">
@@ -113,7 +117,7 @@ export function SociosSettlementHero({
             )}
           </div>
 
-          <div className="shrink-0 flex items-stretch md:flex-col gap-3 md:items-end">
+          <div className="w-full md:w-auto shrink-0 flex flex-col gap-3 md:items-end">
             <Button
               variant="outline"
               size="lg"
@@ -124,23 +128,23 @@ export function SociosSettlementHero({
               Configurar participação
             </Button>
 
-            <div className="rounded-2xl ring-1 ring-border/30 bg-card/55 px-4 py-3 min-w-[280px]">
-              <div className="flex items-center justify-between gap-4">
+            <div className="rounded-2xl ring-1 ring-border/30 bg-card/55 px-4 py-3 w-full md:min-w-[320px]">
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-4">
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-widest font-extrabold text-muted-foreground/90">Recebe</p>
-                  <p className="mt-1 font-mono font-extrabold text-xl md:text-2xl text-primary leading-none">
+                  <p className="mt-1 font-mono font-extrabold text-xl md:text-2xl text-primary leading-none break-words">
                     {formatCurrency(totalRecebe)}
                   </p>
                 </div>
 
-                <div className="relative flex items-center justify-center shrink-0">
+                <div className="relative hidden sm:flex items-center justify-center shrink-0">
                   <div className="h-[36px] w-px bg-border/40" />
                   <div className="absolute text-muted-foreground/70 font-extrabold">↔</div>
                 </div>
 
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-widest font-extrabold text-muted-foreground/90">Paga</p>
-                  <p className="mt-1 font-mono font-extrabold text-xl md:text-2xl text-accent leading-none">
+                  <p className="mt-1 font-mono font-extrabold text-xl md:text-2xl text-accent leading-none break-words">
                     {formatCurrency(totalPaga)}
                   </p>
                 </div>
@@ -221,7 +225,7 @@ export function SociosSettlementHero({
           <div className="lg:col-span-4">
             <div className="rounded-2xl ring-1 ring-border/30 bg-card/50 px-4 py-3 h-full">
               <p className="text-[10px] uppercase tracking-widest font-extrabold text-muted-foreground">
-                Resultado (sinal)
+                Resultado do fechamento (lucro + acerto)
               </p>
               <div className="mt-3 space-y-2 opacity-90">
                 <div className="rounded-xl bg-primary/5 px-3 py-2 flex items-center justify-between gap-3">
@@ -233,19 +237,31 @@ export function SociosSettlementHero({
                   </p>
                   <p className="font-mono font-extrabold text-sm text-primary">{formatCurrency(totalRecebe)}</p>
                 </div>
-                <div className="rounded-xl bg-accent/5 px-3 py-2 flex items-center justify-between gap-3">
-                  <p className="flex items-center gap-2 text-sm font-extrabold text-accent">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-accent/10">
-                      ↘
-                    </span>
-                    Paga
-                  </p>
-                  <p className="font-mono font-extrabold text-sm text-accent">{formatCurrency(totalPaga)}</p>
-                </div>
+                {totalPaga > 0 ? (
+                  <div className="rounded-xl bg-accent/5 px-3 py-2 flex items-center justify-between gap-3">
+                    <p className="flex items-center gap-2 text-sm font-extrabold text-accent">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-accent/10">
+                        ↘
+                      </span>
+                      Paga
+                    </p>
+                    <p className="font-mono font-extrabold text-sm text-accent">{formatCurrency(totalPaga)}</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-card/40 px-3 py-2 flex items-center justify-between gap-3">
+                    <p className="flex items-center gap-2 text-sm font-extrabold text-muted-foreground">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-muted/30">
+                        —
+                      </span>
+                      Paga
+                    </p>
+                    <p className="font-mono font-extrabold text-sm text-muted-foreground">R$ 0,00</p>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 pt-3 border-t border-border/40 text-[11px] text-muted-foreground">
-                Rateio ajustado ao fechamento.
+                Resultado final por sócio = lucro rateado + acerto operacional.
               </div>
             </div>
           </div>

@@ -3,21 +3,49 @@ import { ConstructionCard } from '@/components/obra/ConstructionCard';
 import { useConstructions } from '@/contexts/ConstructionsContext';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { APP_NAME } from '@/lib/app-config';
+import type { ConstructionStatus } from '@/types';
+
+type FilterStatus = 'all' | ConstructionStatus;
+
+const FILTER_TABS: { key: FilterStatus; label: string }[] = [
+  { key: 'all', label: 'Todas' },
+  { key: 'EM_ANDAMENTO', label: 'Em andamento' },
+  { key: 'ENTREGUE', label: 'Entregues' },
+  { key: 'VENDIDA', label: 'Vendidas' },
+  { key: 'PAUSADA', label: 'Pausadas' },
+];
 
 const ObrasList = () => {
   const { constructions, isLoading, error, refresh } = useConstructions();
   const [search, setSearch] = useState('');
-  const filtered = constructions.filter((c) =>
-    c.title.toLowerCase().includes(search.toLowerCase()) ||
-    c.address.toLowerCase().includes(search.toLowerCase())
-  );
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('EM_ANDAMENTO');
+
+  const filtered = useMemo(() => {
+    let list = constructions;
+    if (filterStatus !== 'all') {
+      list = list.filter((c) => c.status === filterStatus);
+    }
+    const q = search.toLowerCase().trim();
+    if (q) {
+      list = list.filter(
+        (c) =>
+          c.title.toLowerCase().includes(q) ||
+          (c.address ?? '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [constructions, filterStatus, search]);
 
   return (
     <MobileShell>
-      <div className="px-4 py-6">
-        <h1 className="text-xl font-bold tracking-tight mb-4">Obras</h1>
+      <div className="px-4 py-6 min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_NAME}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Suas obras</p>
+        </div>
         {error && (
           <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
             {error}
@@ -34,10 +62,26 @@ const ObrasList = () => {
             placeholder="Buscar obra..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-12 text-base"
+            className="pl-9 h-12 text-base rounded-xl border-border bg-card/80"
           />
         </div>
-        <div className="space-y-3">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 scrollbar-none">
+          {FILTER_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setFilterStatus(tab.key)}
+              className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                filterStatus === tab.key
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-card/80 text-muted-foreground hover:bg-muted border border-border'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="space-y-3 mt-4">
           {isLoading && (
             <p className="text-center text-muted-foreground py-8 text-sm">Carregando...</p>
           )}
@@ -45,7 +89,11 @@ const ObrasList = () => {
             <ConstructionCard key={c.id} construction={c} />
           ))}
           {!isLoading && filtered.length === 0 && (
-            <p className="text-center text-muted-foreground py-8 text-sm">Nenhuma obra encontrada</p>
+            <p className="text-center text-muted-foreground py-8 text-sm">
+              {search || filterStatus !== 'all'
+                ? 'Nenhuma obra encontrada com esses filtros'
+                : 'Nenhuma obra cadastrada'}
+            </p>
           )}
         </div>
       </div>

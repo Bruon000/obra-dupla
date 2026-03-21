@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Construction } from '@/types';
 import { createJobSite, listJobSites, updateJobSite } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ConstructionsContextValue = {
   constructions: Construction[];
@@ -28,6 +29,11 @@ function mapJobSiteToConstruction(js: any): Construction {
     startDate: toDateOnly(js.startDate) ?? new Date().toISOString().slice(0, 10),
     endDate: toDateOnly(js.endDate),
     saleValue: Number(js.saleValue ?? 0),
+    commissionValue: Number(js.commissionValue ?? 0),
+    taxValue: Number(js.taxValue ?? 0),
+    otherClosingCosts: Number(js.otherClosingCosts ?? 0),
+    soldAt: toDateOnly(js.soldAt),
+    saleNotes: js.saleNotes ?? "",
     createdAt: toDateOnly(js.createdAt) ?? new Date().toISOString().slice(0, 10),
   };
 }
@@ -36,8 +42,15 @@ export function ConstructionsProvider({ children }: { children: ReactNode }) {
   const [constructions, setConstructions] = useState<Construction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const refresh = useCallback(async () => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setError("");
+      setConstructions([]);
+      return;
+    }
     setIsLoading(true);
     setError("");
     try {
@@ -49,11 +62,12 @@ export function ConstructionsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (isAuthLoading) return;
     refresh();
-  }, [refresh]);
+  }, [isAuthLoading, refresh]);
 
   const addConstruction = useCallback(async (data: Omit<Construction, 'id' | 'createdAt'>) => {
     const created = await createJobSite({
@@ -79,6 +93,11 @@ export function ConstructionsProvider({ children }: { children: ReactNode }) {
     if (data.startDate !== undefined) patch.startDate = data.startDate;
     if (data.endDate !== undefined) patch.endDate = data.endDate;
     if (data.saleValue !== undefined) patch.saleValue = data.saleValue;
+    if (data.commissionValue !== undefined) patch.commissionValue = data.commissionValue;
+    if (data.taxValue !== undefined) patch.taxValue = data.taxValue;
+    if (data.otherClosingCosts !== undefined) patch.otherClosingCosts = data.otherClosingCosts;
+    if (data.soldAt !== undefined) patch.soldAt = data.soldAt;
+    if (data.saleNotes !== undefined) patch.saleNotes = data.saleNotes;
 
     const updated = await updateJobSite(id, patch);
     const mapped = mapJobSiteToConstruction(updated);

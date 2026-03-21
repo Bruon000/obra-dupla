@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      Permite requisições HTTP (cleartext) para a API em IP/localhost durante testes (ex.: rede local).
+      Se você publicar com HTTPS, pode remover essa permissão depois.
+    -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
+

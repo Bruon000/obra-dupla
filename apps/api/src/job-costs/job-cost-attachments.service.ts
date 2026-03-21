@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ActivityFeedService } from "../activity-feed/activity-feed.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { AttachmentStorageService } from "../storage/attachment-storage.service";
 import { UpsertJobCostAttachmentDto } from "./dto/upsert-job-cost-attachment.dto";
 
 @Injectable()
@@ -8,6 +9,7 @@ export class JobCostAttachmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityFeed: ActivityFeedService,
+    private readonly storage: AttachmentStorageService,
   ) {}
 
   private async getUserRole(userId: string): Promise<string | null> {
@@ -25,7 +27,7 @@ export class JobCostAttachmentsService {
   async create(companyId: string, userId: string, dto: UpsertJobCostAttachmentDto) {
     const jobCostEntry = await this.prisma.jobCostEntry.findFirst({
       where: { id: dto.jobCostEntryId, companyId, deletedAt: null },
-      select: { payer: true, source: true, description: true, createdByUserId: true },
+      select: { payer: true, source: true, description: true, createdByUserId: true, totalAmount: true },
     });
     if (!jobCostEntry) throw new NotFoundException("Lançamento não encontrado para anexar.");
 
@@ -44,6 +46,22 @@ export class JobCostAttachmentsService {
       throw new ForbiddenException("Você só pode anexar em lançamentos que você mesmo criou.");
     }
 
+    let fileUrlToSave = dto.fileUrl ?? null;
+    let fileDataBase64ToSave: string | null = dto.fileDataBase64 ?? null;
+    if (dto.fileDataBase64 && this.storage.isConfigured()) {
+      const uploadedUrl = await this.storage.uploadBase64(
+        companyId,
+        "cost",
+        dto.fileName,
+        dto.mimeType,
+        dto.fileDataBase64,
+      );
+      if (uploadedUrl) {
+        fileUrlToSave = uploadedUrl;
+        fileDataBase64ToSave = null;
+      }
+    }
+
     const created = await this.prisma.jobCostAttachment.create({
       data: {
         companyId,
@@ -51,9 +69,9 @@ export class JobCostAttachmentsService {
         fileName: dto.fileName,
         mimeType: dto.mimeType,
         storageType: dto.storageType,
-        fileDataBase64: dto.fileDataBase64 ?? null,
+        fileDataBase64: fileDataBase64ToSave,
         thumbnailBase64: dto.thumbnailBase64 ?? null,
-        fileUrl: dto.fileUrl ?? null,
+        fileUrl: fileUrlToSave,
         createdByUserId: userId,
         updatedByUserId: userId,
       },
@@ -72,6 +90,7 @@ export class JobCostAttachmentsService {
         description: jobCostEntry.description,
         payer: jobCostEntry.payer,
         source: jobCostEntry.source,
+        totalAmount: jobCostEntry.totalAmount,
         permission: isAdmin ? "ADMIN_OVERRIDE" : "AUTHOR",
       },
     );
@@ -88,7 +107,7 @@ export class JobCostAttachmentsService {
         fileName: true,
         mimeType: true,
         jobCostEntry: {
-          select: { payer: true, source: true, description: true, createdByUserId: true },
+          select: { payer: true, source: true, description: true, createdByUserId: true, totalAmount: true },
         },
         createdByUserId: true,
       },
@@ -116,7 +135,25 @@ export class JobCostAttachmentsService {
       description: existing.jobCostEntry.description,
       payer: existing.jobCostEntry.payer,
       source: existing.jobCostEntry.source,
+      totalAmount: existing.jobCostEntry.totalAmount,
     };
+
+    let fileUrlToSave = dto.fileUrl ?? null;
+    let fileDataBase64ToSave: string | null = dto.fileDataBase64 ?? null;
+    if (dto.fileDataBase64 && this.storage.isConfigured()) {
+      const uploadedUrl = await this.storage.uploadBase64(
+        companyId,
+        "cost",
+        dto.fileName,
+        dto.mimeType,
+        dto.fileDataBase64,
+        id,
+      );
+      if (uploadedUrl) {
+        fileUrlToSave = uploadedUrl;
+        fileDataBase64ToSave = null;
+      }
+    }
 
     const updated = await this.prisma.jobCostAttachment.update({
       where: { id },
@@ -124,9 +161,9 @@ export class JobCostAttachmentsService {
         fileName: dto.fileName,
         mimeType: dto.mimeType,
         storageType: dto.storageType,
-        fileDataBase64: dto.fileDataBase64 ?? null,
+        fileDataBase64: fileDataBase64ToSave,
         thumbnailBase64: dto.thumbnailBase64 ?? null,
-        fileUrl: dto.fileUrl ?? null,
+        fileUrl: fileUrlToSave,
         updatedByUserId: userId,
         version: { increment: 1 },
       },
@@ -146,6 +183,7 @@ export class JobCostAttachmentsService {
           description: before.description,
           payer: before.payer,
           source: before.source,
+          totalAmount: before.totalAmount,
         },
         permission: isAdmin && existing.createdByUserId !== userId ? "ADMIN_OVERRIDE" : "AUTHOR",
         targetCreatedByUserId: existing.jobCostEntry.createdByUserId,
@@ -164,7 +202,7 @@ export class JobCostAttachmentsService {
         fileName: true,
         mimeType: true,
         jobCostEntry: {
-          select: { payer: true, source: true, description: true, createdByUserId: true },
+          select: { payer: true, source: true, description: true, createdByUserId: true, totalAmount: true },
         },
         createdByUserId: true,
       },
@@ -192,6 +230,7 @@ export class JobCostAttachmentsService {
       description: existing.jobCostEntry.description,
       payer: existing.jobCostEntry.payer,
       source: existing.jobCostEntry.source,
+      totalAmount: existing.jobCostEntry.totalAmount,
     };
 
     const deleted = await this.prisma.jobCostAttachment.update({

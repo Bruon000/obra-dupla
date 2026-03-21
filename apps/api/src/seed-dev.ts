@@ -32,8 +32,22 @@ async function main() {
     (await prisma.company.create({
       data: {
         name: "Obra Dupla Dev",
+        billingStatus: "internal",
+        planSlug: "legacy",
+        maxJobSites: 999,
+        maxUsers: 999,
       },
     }));
+
+  await prisma.company.update({
+    where: { id: ensuredCompany.id },
+    data: {
+      billingStatus: "internal",
+      planSlug: "legacy",
+      maxJobSites: 999,
+      maxUsers: 999,
+    },
+  });
 
   const user = await prisma.user.upsert({
     where: { email },

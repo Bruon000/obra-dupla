@@ -1,4 +1,4 @@
-export type ConstructionStatus = 'EM_ANDAMENTO' | 'VENDIDA' | 'PAUSADA';
+export type ConstructionStatus = 'EM_ANDAMENTO' | 'VENDIDA' | 'PAUSADA' | 'ENTREGUE';
 
 export interface Construction {
   id: string;
@@ -9,6 +9,11 @@ export interface Construction {
   startDate: string;
   endDate: string | null;
   saleValue: number;
+  commissionValue?: number;
+  taxValue?: number;
+  otherClosingCosts?: number;
+  soldAt?: string | null;
+  saleNotes?: string;
   createdAt: string;
 }
 
@@ -54,6 +59,9 @@ export interface Expense {
   supplier?: string;
   invoiceNumber?: string;
   paymentMethod?: string;
+  /** Para exibir etiqueta "Editado" quando o lançamento foi alterado após criação */
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface LegalCost {
@@ -67,6 +75,8 @@ export interface LegalCost {
   paidByUserId: string;
   notes: string;
   attachments?: ExpenseAttachment[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface LaborEntry {
@@ -81,6 +91,8 @@ export interface LaborEntry {
   notes: string;
   attachments?: ExpenseAttachment[];
   createdByUserId?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface Sale {

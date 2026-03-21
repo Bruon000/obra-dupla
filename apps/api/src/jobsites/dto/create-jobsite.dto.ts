@@ -1,6 +1,6 @@
 import { IsIn, IsOptional, IsString, MinLength } from "class-validator";
 
-const STATUSES = ["EM_ANDAMENTO", "VENDIDA", "PAUSADA"] as const;
+const STATUSES = ["EM_ANDAMENTO", "VENDIDA", "PAUSADA", "ENTREGUE"] as const;
 
 export class CreateJobSiteDto {
   @IsString()
@@ -31,5 +31,20 @@ export class CreateJobSiteDto {
 
   @IsOptional()
   saleValue?: number;
+
+  @IsOptional()
+  commissionValue?: number;
+
+  @IsOptional()
+  taxValue?: number;
+
+  @IsOptional()
+  otherClosingCosts?: number;
+
+  @IsOptional()
+  soldAt?: string | null;
+
+  @IsOptional()
+  saleNotes?: string;
 }
 

@@ -54,6 +54,11 @@ export class JobCostsService {
   }
 
   async list(companyId: string, query: ListJobCostsDto) {
+    // Garantia contra "false" string virando truthy.
+    const includeAttachments =
+      (query.includeAttachments as any) === undefined
+        ? true
+        : (query.includeAttachments as any) === true || (query.includeAttachments as any) === "true";
     return this.prisma.jobCostEntry.findMany({
       where: {
         companyId,
@@ -71,19 +76,22 @@ export class JobCostsService {
             }
           : {}),
       },
+      take: 800,
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: {
         createdByUser: { select: { id: true, name: true, email: true } },
         updatedByUser: { select: { id: true, name: true, email: true } },
         deletedByUser: { select: { id: true, name: true, email: true } },
-        attachments: {
-          where: { deletedAt: null },
-          orderBy: { createdAt: "desc" },
-          include: {
-            createdByUser: { select: { id: true, name: true, email: true } },
-          },
-        },
+        attachments: includeAttachments
+          ? {
+              where: { deletedAt: null },
+              orderBy: { createdAt: "desc" },
+              include: {
+                createdByUser: { select: { id: true, name: true, email: true } },
+              },
+            }
+          : false,
       },
-      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     });
   }
 

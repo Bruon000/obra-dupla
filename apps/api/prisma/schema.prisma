@@ -13,6 +13,17 @@ model Company {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
+  /// Plano comercial: free | pro | enterprise (extensível)
+  planSlug            String    @default("free")
+  /// active | trialing | past_due | canceled | internal
+  billingStatus       String    @default("active")
+  trialEndsAt         DateTime?
+  stripeCustomerId    String?
+  stripeSubscriptionId String?
+  /// Limites por tenant (novas contas via /auth/register recebem valores menores; legado usa 999)
+  maxJobSites         Int       @default(999)
+  maxUsers            Int       @default(999)
+
   users         User[]
   clients       Client[]
   jobSites      JobSite[]
@@ -84,6 +95,11 @@ model JobSite {
   startDate    DateTime?   @db.Date
   endDate      DateTime?   @db.Date
   saleValue    Decimal     @default(0) @db.Decimal(14, 2)
+  commissionValue    Decimal     @default(0) @db.Decimal(14, 2)
+  taxValue           Decimal     @default(0) @db.Decimal(14, 2)
+  otherClosingCosts  Decimal     @default(0) @db.Decimal(14, 2)
+  soldAt             DateTime?
+  saleNotes         String      @default("")
 
   deletedAt    DateTime?
 

@@ -1,17 +1,48 @@
 /**
- * Base URL da API (NestJS). Para produção, defina VITE_API_URL no .env.
+ * Base URL da API (NestJS).
+ * - Dev (`npm run dev`): usa o mesmo host do navegador + porta 3005 (Wi‑Fi / testes).
+ * - Produção / APK: defina VITE_API_URL no build (.env.production ou .env.android.lan).
+ *   Sem isso, no APK o "localhost" seria o próprio celular — a API nunca conecta.
  */
-const envBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
-export const API_BASE = envBase || "http://localhost:3005";
+const viteApiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+const isDev = import.meta.env.DEV;
+
+function resolveApiBase(): string {
+  if (isDev) {
+    if (typeof window !== "undefined") {
+      return `http://${window.location.hostname}:3005`;
+    }
+    return "http://localhost:3005";
+  }
+  if (viteApiUrl) {
+    return viteApiUrl.replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined") {
+    console.warn(
+      "[Canteiro] VITE_API_URL não foi definida no build. Crie .env.production (URL pública da API) ou .env.android.lan (IP do PC na rede).",
+    );
+  }
+  return "http://127.0.0.1:3005";
+}
+
+export const API_BASE = resolveApiBase();
 
 const STORAGE_TOKEN = "obra_dupla_token";
 const STORAGE_SUPPORT_COMPANY_ID = "obra_dupla_support_company_id";
 
+// Alguns ambientes (ex.: WebView/Capacitor) podem ter instabilidade com leitura do localStorage.
+// Mantemos o token também em memória para não quebrar autenticação entre renders.
+let apiTokenInMemory: string | null = null;
+export function setApiTokenInMemory(token: string | null) {
+  apiTokenInMemory = token;
+}
+
 function getStoredToken(): string | null {
   try {
+    if (apiTokenInMemory) return apiTokenInMemory;
     return localStorage.getItem(STORAGE_TOKEN);
   } catch {
-    return null;
+    return apiTokenInMemory;
   }
 }
 
@@ -29,6 +60,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers ?? undefined);
   if (!headers.has("Content-Type") && init?.body) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  // Evita página/interceptação do ngrok em chamadas de API no WebView.
+  headers.set("ngrok-skip-browser-warning", "true");
+  // Evita página de proteção/interceptação do localtunnel.
+  headers.set("bypass-tunnel-reminder", "true");
   const supportCompanyId = getStoredSupportCompanyId();
   if (supportCompanyId) headers.set("X-Support-Company-Id", supportCompanyId);
 
@@ -72,12 +107,16 @@ export async function login(email: string, password: string): Promise<LoginRespo
   try {
     res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+        "bypass-tunnel-reminder": "true",
+      },
       body: JSON.stringify({ email, password }),
     });
   } catch (err) {
     throw new Error(
-      "Não foi possível conectar à API. Verifique se a API está rodando (ex.: porta 3005) e se o endereço está correto."
+      `Não foi possível conectar à API (${API_BASE}). Verifique se a API está rodando e acessível na rede.`
     );
   }
   if (!res.ok) {
@@ -87,6 +126,50 @@ export async function login(email: string, password: string): Promise<LoginRespo
     throw new Error(text ?? "Falha ao entrar. Verifique e-mail e senha.");
   }
   return res.json();
+}
+
+export type RegisterPayload = {
+  companyName: string;
+  adminName: string;
+  email: string;
+  password: string;
+};
+
+export async function registerAccount(payload: RegisterPayload): Promise<LoginResponse> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+        "bypass-tunnel-reminder": "true",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error(
+      `Não foi possível conectar à API (${API_BASE}). Verifique se a API está rodando e acessível na rede.`,
+    );
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const msg = data.message;
+    const text = Array.isArray(msg) ? msg[0] : msg;
+    throw new Error(text ?? `Erro no cadastro (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function getBillingSummary(): Promise<{
+  companyName: string;
+  planSlug: string;
+  billingStatus: string;
+  trialEndsAt: string | null;
+  limits: { maxJobSites: number; maxUsers: number; usedJobSites: number; usedUsers: number };
+  stripeEnabled: boolean;
+}> {
+  return apiFetch("/billing/summary");
 }
 
 export async function listSupportCompanies(): Promise<SupportCompany[]> {
@@ -135,6 +218,7 @@ export type ListJobCostsParams = {
   category?: string;
   from?: string;
   to?: string;
+  includeAttachments?: boolean;
 };
 
 export async function listJobCosts(params: ListJobCostsParams): Promise<JobCostEntry[]> {
@@ -145,6 +229,9 @@ export async function listJobCosts(params: ListJobCostsParams): Promise<JobCostE
   if (params.category) qs.set("category", params.category);
   if (params.from) qs.set("from", params.from);
   if (params.to) qs.set("to", params.to);
+  if (params.includeAttachments !== undefined) {
+    qs.set("includeAttachments", params.includeAttachments ? "true" : "false");
+  }
   return apiFetch<JobCostEntry[]>(`/job-costs?${qs.toString()}`);
 }
 
@@ -246,6 +333,11 @@ export type JobSite = {
   startDate: string | null; // ISO
   endDate: string | null; // ISO
   saleValue: number;
+  commissionValue?: number;
+  taxValue?: number;
+  otherClosingCosts?: number;
+  soldAt?: string | null;
+  saleNotes?: string;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 };
@@ -258,6 +350,11 @@ export type CreateJobSiteInput = {
   startDate?: string | null; // YYYY-MM-DD
   endDate?: string | null; // YYYY-MM-DD
   saleValue?: number;
+  commissionValue?: number;
+  taxValue?: number;
+  otherClosingCosts?: number;
+  soldAt?: string | null;
+  saleNotes?: string;
 };
 
 export async function listJobSites(): Promise<JobSite[]> {
@@ -297,7 +394,15 @@ export type CreateUserInput = {
 };
 
 export async function listUsers(): Promise<CompanyUser[]> {
-  return apiFetch<CompanyUser[]>("/users");
+  try {
+    return await apiFetch<CompanyUser[]>("/users");
+  } catch (e: any) {
+    const msg = String(e?.message ?? "");
+    if (msg.includes("403") || msg.toLowerCase().includes("forbidden") || msg.toLowerCase().includes("acesso negado")) {
+      return [];
+    }
+    throw e;
+  }
 }
 
 export async function createUser(dto: CreateUserInput): Promise<CompanyUser> {

@@ -33,6 +33,10 @@ export class ActivityFeedService {
         entityType,
         entityId,
       },
+      take: 500,
+      orderBy: {
+        createdAt: "desc",
+      },
       include: {
         user: {
           select: {
@@ -41,9 +45,6 @@ export class ActivityFeedService {
             email: true,
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
       },
     });
   }

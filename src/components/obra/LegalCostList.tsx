@@ -4,7 +4,8 @@ import { Gavel, Pencil, Trash2, Paperclip, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { downloadAttachment } from '@/lib/attachments';
 import { AttachmentPreviewDialog } from './AttachmentPreviewDialog';
-import { useState } from 'react';
+import { ListPagination, LIST_PAGE_SIZE } from './ListPagination';
+import { useState, useMemo, useEffect } from 'react';
 
 interface LegalCostListProps {
   members: ConstructionMember[];
@@ -12,11 +13,31 @@ interface LegalCostListProps {
   onEdit?: (cost: LegalCost) => void;
   onDelete?: (cost: LegalCost) => void;
   canEdit?: (cost: LegalCost) => boolean;
+  /** ID do item a destacar (ex.: vindo da auditoria) */
+  highlightedId?: string | null;
 }
 
-export function LegalCostList({ members, costs, onEdit, onDelete, canEdit }: LegalCostListProps) {
+export function LegalCostList({ members, costs, onEdit, onDelete, canEdit, highlightedId }: LegalCostListProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<any | null>(null);
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(costs.length / LIST_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = useMemo(
+    () => costs.slice((safePage - 1) * LIST_PAGE_SIZE, safePage * LIST_PAGE_SIZE),
+    [costs, safePage]
+  );
+
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [totalPages, page]);
+
+  useEffect(() => {
+    if (!highlightedId || costs.length === 0) return;
+    const idx = costs.findIndex((c) => c.id === highlightedId);
+    if (idx >= 0) setPage(Math.floor(idx / LIST_PAGE_SIZE) + 1);
+  }, [highlightedId, costs]);
 
   if (costs.length === 0) {
     return (
@@ -29,17 +50,18 @@ export function LegalCostList({ members, costs, onEdit, onDelete, canEdit }: Leg
 
   return (
     <div className="space-y-2">
-      {costs.map((cost) => {
+      {paginated.map((cost) => {
         const payer = members.find((m) => m.userId === cost.paidByUserId);
         const firstAttachment = cost.attachments?.[0] ?? null;
         const heroThumb =
           firstAttachment?.thumbnailBase64 && firstAttachment.mimeType?.startsWith("image/")
             ? `data:${firstAttachment.mimeType};base64,${firstAttachment.thumbnailBase64}`
             : null;
+        const isHighlighted = highlightedId === cost.id;
         return (
           <div
             key={cost.id}
-            className="relative bg-card/60 rounded-3xl p-4 shadow-sm border border-border/50 animate-slide-up overflow-hidden"
+            className={`relative rounded-3xl p-4 shadow-sm border animate-slide-up overflow-hidden ${isHighlighted ? 'bg-primary/10 border-primary ring-2 ring-primary' : 'bg-card/60 border-border/50'}`}
           >
             {heroThumb ? (
               <div className="absolute inset-0 opacity-25">
@@ -78,9 +100,17 @@ export function LegalCostList({ members, costs, onEdit, onDelete, canEdit }: Leg
                 <span className="font-mono font-bold text-sm">{formatCurrency(cost.value)}</span>
               </div>
             </div>
-            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground mt-1">
-              {payer?.name ?? 'N/A'}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+              <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
+                {payer?.name ?? 'N/A'}
+              </span>
+              {cost.updatedAt && cost.createdAt && new Date(cost.updatedAt).getTime() > new Date(cost.createdAt).getTime() + 1000 && (
+                <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full">Editado</span>
+              )}
+              {cost.attachments && cost.attachments.length > 0 && (
+                <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">Com comprovante</span>
+              )}
+            </div>
             {cost.notes && (
               <p className="mt-2 pt-2 border-t border-border text-[11px] text-muted-foreground">Obs: {cost.notes}</p>
             )}
@@ -127,6 +157,14 @@ export function LegalCostList({ members, costs, onEdit, onDelete, canEdit }: Leg
           </div>
         );
       })}
+      <ListPagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        totalItems={costs.length}
+        pageSize={LIST_PAGE_SIZE}
+        onPageChange={setPage}
+        itemLabel="custos legais"
+      />
       <AttachmentPreviewDialog
         attachment={previewAttachment}
         open={previewOpen}

@@ -14,5 +14,5 @@ export const EXPENSE_CATEGORIES = [
 
 export const COST_TYPES = ["Material", "Serviço", "Ferramenta", "Transporte", "Outros"] as const;
 
-export const LEGAL_TYPES = ["Taxa", "Imposto", "Cartório", "Registro", "Honorário", "Outros"] as const;
+export const LEGAL_TYPES = ["Taxa", "Imposto", "Cartório", "Registro", "Honorário", "Prefeitura", "Outros"] as const;
 

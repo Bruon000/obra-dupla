@@ -8,6 +8,7 @@ import { ConstructionsProvider } from "@/contexts/ConstructionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import ObrasList from "./pages/ObrasList";
 import ObraDetail from "./pages/ObraDetail";
@@ -29,6 +30,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/cadastro" element={<Signup />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/obras" element={<ProtectedRoute><ObrasList /></ProtectedRoute>} />
               <Route path="/obras/nova" element={<ProtectedRoute><NovaObra /></ProtectedRoute>} />

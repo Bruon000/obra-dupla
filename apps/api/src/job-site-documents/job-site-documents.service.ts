@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ActivityFeedService } from "../activity-feed/activity-feed.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { AttachmentStorageService } from "../storage/attachment-storage.service";
 import { UpsertJobSiteDocumentDto } from "./dto/upsert-job-site-document.dto";
 
 @Injectable()
@@ -8,6 +9,7 @@ export class JobSiteDocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityFeed: ActivityFeedService,
+    private readonly storage: AttachmentStorageService,
   ) {}
 
   private async getUserRole(userId: string): Promise<string | null> {
@@ -31,6 +33,7 @@ export class JobSiteDocumentsService {
         ...(category ? { category } : {}),
       },
       orderBy: { createdAt: "desc" },
+      take: 500,
       include: {
         createdByUser: { select: { id: true, name: true, email: true } },
       },
@@ -48,6 +51,22 @@ export class JobSiteDocumentsService {
       throw new ForbiddenException("Informe `fileDataBase64` ou `fileUrl`.");
     }
 
+    let fileUrlToSave = dto.fileUrl ?? null;
+    let fileDataBase64ToSave: string | null = dto.fileDataBase64 ?? null;
+    if (dto.fileDataBase64 && this.storage.isConfigured()) {
+      const uploadedUrl = await this.storage.uploadBase64(
+        companyId,
+        "doc",
+        dto.fileName,
+        dto.mimeType,
+        dto.fileDataBase64,
+      );
+      if (uploadedUrl) {
+        fileUrlToSave = uploadedUrl;
+        fileDataBase64ToSave = null;
+      }
+    }
+
     const created = await this.prisma.jobSiteDocument.create({
       data: {
         companyId,
@@ -57,8 +76,8 @@ export class JobSiteDocumentsService {
         fileName: dto.fileName,
         mimeType: dto.mimeType,
         storageType: dto.storageType,
-        fileDataBase64: dto.fileDataBase64 ?? null,
-        fileUrl: dto.fileUrl ?? null,
+        fileDataBase64: fileDataBase64ToSave,
+        fileUrl: fileUrlToSave,
         thumbnailBase64: dto.thumbnailBase64 ?? null,
         uploadedByUserId: userId,
         createdByUserId: userId,
@@ -121,6 +140,23 @@ export class JobSiteDocumentsService {
       title: existing.title,
     };
 
+    let fileUrlToSave = dto.fileUrl ?? null;
+    let fileDataBase64ToSave: string | null = dto.fileDataBase64 ?? null;
+    if (dto.fileDataBase64 && this.storage.isConfigured()) {
+      const uploadedUrl = await this.storage.uploadBase64(
+        companyId,
+        "doc",
+        dto.fileName,
+        dto.mimeType,
+        dto.fileDataBase64,
+        id,
+      );
+      if (uploadedUrl) {
+        fileUrlToSave = uploadedUrl;
+        fileDataBase64ToSave = null;
+      }
+    }
+
     const updated = await this.prisma.jobSiteDocument.update({
       where: { id },
       data: {
@@ -129,8 +165,8 @@ export class JobSiteDocumentsService {
         fileName: dto.fileName,
         mimeType: dto.mimeType,
         storageType: dto.storageType,
-        fileDataBase64: dto.fileDataBase64 ?? null,
-        fileUrl: dto.fileUrl ?? null,
+        fileDataBase64: fileDataBase64ToSave,
+        fileUrl: fileUrlToSave,
         thumbnailBase64: dto.thumbnailBase64 ?? null,
         updatedByUserId: userId,
         version: { increment: 1 },

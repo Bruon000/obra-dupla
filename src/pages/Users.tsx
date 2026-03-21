@@ -14,7 +14,7 @@ export default function Users() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("member");
+  const [role, setRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
   const [saving, setSaving] = useState(false);
 
   const { user: authUser } = useAuth();
@@ -23,7 +23,7 @@ export default function Users() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
-  const [editRole, setEditRole] = useState("member");
+  const [editRole, setEditRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
   const [editPassword, setEditPassword] = useState("");
   const [editingSaving, setEditingSaving] = useState(false);
 
@@ -62,13 +62,13 @@ export default function Users() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
-        role: role.trim() || "member",
+        role,
       });
       setUsers((prev) => [created, ...prev.filter((u) => u.id !== created.id)]);
       setName("");
       setEmail("");
       setPassword("");
-      setRole("member");
+      setRole("MEMBER");
     } catch (e: any) {
       setError(e?.message ?? "Falha ao criar usuário");
     } finally {
@@ -80,7 +80,7 @@ export default function Users() {
     setEditingId(u.id);
     setEditName(u.name ?? "");
     setEditEmail(u.email ?? "");
-    setEditRole(u.role ?? "member");
+    setEditRole((u.role === "ADMIN" ? "ADMIN" : "MEMBER") as "ADMIN" | "MEMBER");
     setEditPassword("");
     setError("");
   };
@@ -100,7 +100,7 @@ export default function Users() {
       const updated = await updateUser(editingId, {
         name: editName.trim(),
         email: editEmail.trim().toLowerCase(),
-        role: editRole.trim(),
+        role: editRole,
         ...(editPassword ? { password: editPassword } : {}),
       });
       setUsers((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
@@ -150,7 +150,15 @@ export default function Users() {
             </div>
             <div>
               <Label>Papel</Label>
-              <Input value={role} onChange={(e) => setRole(e.target.value)} className="h-11 mt-1" disabled={saving} placeholder="member" />
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as "ADMIN" | "MEMBER")}
+                className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base mt-1 disabled:opacity-50"
+                disabled={saving}
+              >
+                <option value="MEMBER">Sócio</option>
+                <option value="ADMIN">Admin</option>
+              </select>
             </div>
             <Button type="submit" size="lg" className="w-full h-12 font-bold" disabled={saving}>
               {saving ? "Criando..." : "Criar usuário"}
@@ -180,7 +188,7 @@ export default function Users() {
                       <p className="text-[11px] text-muted-foreground truncate">{u.email}</p>
                     </div>
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
-                      {u.role}
+                      {u.role === "ADMIN" ? "Admin" : "Sócio"}
                     </span>
                   </div>
 
@@ -203,7 +211,15 @@ export default function Users() {
                         </div>
                         <div className="space-y-1">
                           <Label>Papel</Label>
-                          <Input className="h-10" value={editRole} onChange={(e) => setEditRole(e.target.value)} disabled={editingSaving} />
+                          <select
+                            value={editRole}
+                            onChange={(e) => setEditRole(e.target.value as "ADMIN" | "MEMBER")}
+                            className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm disabled:opacity-50"
+                            disabled={editingSaving}
+                          >
+                            <option value="MEMBER">Sócio</option>
+                            <option value="ADMIN">Admin</option>
+                          </select>
                         </div>
                         <div className="space-y-1">
                           <Label>Nova senha (opcional)</Label>

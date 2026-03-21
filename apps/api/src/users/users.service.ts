@@ -4,11 +4,12 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import * as crypto from "node:crypto";
 import { ActivityFeedService } from "../activity-feed/activity-feed.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
+import { TenantLimitsService } from "../tenant-limits/tenant-limits.service";
 
 const SALT_LEN = 16;
 const KEY_LEN = 64;
 
-function hashPassword(password: string): string {
+export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(SALT_LEN).toString("hex");
   const hash = crypto.scryptSync(password, salt, KEY_LEN).toString("hex");
   return `${salt}:${hash}`;
@@ -26,10 +27,12 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityFeed: ActivityFeedService,
+    private readonly tenantLimits: TenantLimitsService,
   ) {}
 
   async create(companyId: string, actorUserId: string, dto: CreateUserDto) {
     await this.ensureAdminOrDeny(companyId, actorUserId, "USER_CREATE_DENIED");
+    await this.tenantLimits.assertCanCreateUser(companyId);
 
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },

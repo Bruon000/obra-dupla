@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CreateJobSiteDto } from "./dto/create-jobsite.dto";
 import { UpdateJobSiteDto } from "./dto/update-jobsite.dto";
 import { ActivityFeedService } from "../activity-feed/activity-feed.service";
+import { TenantLimitsService } from "../tenant-limits/tenant-limits.service";
 
 function parseDateOnly(value?: string | null): Date | null {
   if (!value) return null;
@@ -12,11 +13,18 @@ function parseDateOnly(value?: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function parseDateTime(value?: string | null): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 @Injectable()
 export class JobSitesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityFeed: ActivityFeedService,
+    private readonly tenantLimits: TenantLimitsService,
   ) {}
 
   private async getUserRole(userId: string): Promise<string | null> {
@@ -48,6 +56,7 @@ export class JobSitesService {
     return this.prisma.jobSite.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
+      take: 500,
     });
   }
 
@@ -59,7 +68,8 @@ export class JobSitesService {
     return found;
   }
 
-  create(companyId: string, dto: CreateJobSiteDto) {
+  async create(companyId: string, dto: CreateJobSiteDto) {
+    await this.tenantLimits.assertCanCreateJobSite(companyId);
     return this.prisma.jobSite.create({
       data: {
         companyId,
@@ -70,6 +80,11 @@ export class JobSitesService {
         startDate: parseDateOnly(dto.startDate),
         endDate: parseDateOnly(dto.endDate),
         saleValue: dto.saleValue ?? 0,
+        commissionValue: dto.commissionValue ?? 0,
+        taxValue: dto.taxValue ?? 0,
+        otherClosingCosts: dto.otherClosingCosts ?? 0,
+        soldAt: parseDateTime(dto.soldAt),
+        saleNotes: dto.saleNotes ?? "",
       },
     });
   }
@@ -89,6 +104,11 @@ export class JobSitesService {
       startDate: existing.startDate,
       endDate: existing.endDate,
       saleValue: existing.saleValue,
+      commissionValue: (existing as any).commissionValue,
+      taxValue: (existing as any).taxValue,
+      otherClosingCosts: (existing as any).otherClosingCosts,
+      soldAt: (existing as any).soldAt,
+      saleNotes: (existing as any).saleNotes,
     };
 
     const updated = await this.prisma.jobSite.update({
@@ -101,6 +121,11 @@ export class JobSitesService {
         ...(dto.startDate !== undefined ? { startDate: parseDateOnly(dto.startDate) } : {}),
         ...(dto.endDate !== undefined ? { endDate: parseDateOnly(dto.endDate) } : {}),
         ...(dto.saleValue !== undefined ? { saleValue: dto.saleValue ?? 0 } : {}),
+        ...(dto.commissionValue !== undefined ? { commissionValue: dto.commissionValue ?? 0 } : {}),
+        ...(dto.taxValue !== undefined ? { taxValue: dto.taxValue ?? 0 } : {}),
+        ...(dto.otherClosingCosts !== undefined ? { otherClosingCosts: dto.otherClosingCosts ?? 0 } : {}),
+        ...(dto.soldAt !== undefined ? { soldAt: parseDateTime(dto.soldAt) } : {}),
+        ...(dto.saleNotes !== undefined ? { saleNotes: dto.saleNotes ?? "" } : {}),
       },
     });
 
@@ -114,6 +139,11 @@ export class JobSitesService {
         startDate: updated.startDate,
         endDate: updated.endDate,
         saleValue: updated.saleValue,
+        commissionValue: (updated as any).commissionValue,
+        taxValue: (updated as any).taxValue,
+        otherClosingCosts: (updated as any).otherClosingCosts,
+        soldAt: (updated as any).soldAt,
+        saleNotes: (updated as any).saleNotes,
       },
     });
 

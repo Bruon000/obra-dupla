@@ -1,5 +1,11 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
-import { login as apiLogin, type AuthUser } from "@/lib/api";
+import {
+  login as apiLogin,
+  registerAccount as apiRegister,
+  setApiTokenInMemory,
+  type AuthUser,
+  type RegisterPayload,
+} from "@/lib/api";
 
 const STORAGE_TOKEN = "obra_dupla_token";
 const STORAGE_USER = "obra_dupla_user";
@@ -9,6 +15,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  registerAccount: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 };
@@ -35,22 +42,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { token: t, user: u } = loadStored();
     setToken(t);
     setUser(u);
+    setApiTokenInMemory(t);
     setIsLoading(false);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const data = await apiLogin(email, password);
-    localStorage.setItem(STORAGE_TOKEN, data.access_token);
-    localStorage.setItem(STORAGE_USER, JSON.stringify(data.user));
+    try {
+      localStorage.setItem(STORAGE_TOKEN, data.access_token);
+      localStorage.setItem(STORAGE_USER, JSON.stringify(data.user));
+    } catch {
+      // Se localStorage não estiver disponível no APK/ambiente, seguimos com o token em memória.
+    }
     setToken(data.access_token);
     setUser(data.user);
+    setApiTokenInMemory(data.access_token);
+  }, []);
+
+  const registerAccount = useCallback(async (payload: RegisterPayload) => {
+    const data = await apiRegister(payload);
+    try {
+      localStorage.setItem(STORAGE_TOKEN, data.access_token);
+      localStorage.setItem(STORAGE_USER, JSON.stringify(data.user));
+    } catch {
+      // ignora
+    }
+    setToken(data.access_token);
+    setUser(data.user);
+    setApiTokenInMemory(data.access_token);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_TOKEN);
-    localStorage.removeItem(STORAGE_USER);
+    try {
+      localStorage.removeItem(STORAGE_TOKEN);
+      localStorage.removeItem(STORAGE_USER);
+    } catch {
+      // Ignora se localStorage não estiver disponível.
+    }
     setToken(null);
     setUser(null);
+    setApiTokenInMemory(null);
   }, []);
 
   const value: AuthContextValue = {
@@ -58,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: !!token && !!user,
     login,
+    registerAccount,
     logout,
     isLoading,
   };

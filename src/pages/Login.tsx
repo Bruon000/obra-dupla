@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { HardHat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { APP_NAME, APP_TAGLINE } from "@/lib/app-config";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -40,14 +41,14 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/15 flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <HardHat className="w-8 h-8 text-primary" />
+          <div className="w-[72px] h-[72px] rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center mx-auto mb-4">
+            <HardHat className="w-9 h-9 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">ObraDupla</h1>
-          <p className="text-muted-foreground text-sm mt-1">Entre na sua conta</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{APP_NAME}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{APP_TAGLINE} — Entre na sua conta</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -90,6 +91,12 @@ export default function Login() {
           </Button>
         </form>
 
+        <p className="text-sm text-center text-muted-foreground">
+          Novo por aqui?{" "}
+          <Link to="/cadastro" className="text-primary font-semibold underline-offset-4 hover:underline">
+            Criar conta
+          </Link>
+        </p>
         <p className="text-xs text-center text-muted-foreground">
           Ao entrar, você concorda com o uso do sistema para gestão da sua obra.
         </p>

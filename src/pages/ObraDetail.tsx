@@ -50,12 +50,12 @@ import {
   type JobCostPayer,
 } from '@/lib/api';
 
-import kpiInvestimento from '../../ChatGPT Image 18 de mar. de 2026, 12_43_29.png';
-import kpiLucro from '../../ChatGPT Image 18 de mar. de 2026, 12_43_35.png';
-import kpiMateriais from '../../ChatGPT Image 18 de mar. de 2026, 12_43_39.png';
-import kpiServicos from '../../ChatGPT Image 18 de mar. de 2026, 12_43_41.png';
-import kpiLegais from '../../ChatGPT Image 18 de mar. de 2026, 12_43_45.png';
-import kpiMaoDeObra from '../../ChatGPT Image 18 de mar. de 2026, 12_44_39.png';
+import kpiInvestimento from '@/assets/kpi/investimento.png';
+import kpiLucro from '@/assets/kpi/lucro.png';
+import kpiMateriais from '@/assets/kpi/materiais.png';
+import kpiServicos from '@/assets/kpi/servicos.png';
+import kpiLegais from '@/assets/kpi/legais.png';
+import kpiMaoDeObra from '@/assets/kpi/mao-de-obra.png';
 
 type TabKey = 'resumo' | 'gastos' | 'legais' | 'mao-de-obra' | 'venda' | 'auditoria';
 

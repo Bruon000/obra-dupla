@@ -1,0 +1,12 @@
+# Blueprint opcional: Render → New Blueprint → conectar repo.
+# Ajuste o nome do serviço e adicione secrets no painel (DATABASE_URL, JWT_SECRET, R2_*, etc.).
+services:
+  - type: web
+    name: canteiro-api
+    runtime: node
+    rootDir: apps/api
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: HOST
+        value: 0.0.0.0

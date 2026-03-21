@@ -37,7 +37,9 @@ export function SaleFormDrawer({ open, onOpenChange, initialData, onSubmit }: Sa
 
   useEffect(() => {
     if (open && initialData) {
-      const percent = initialData.saleValue > 0 ? (initialData.commissionValue / initialData.saleValue) * 100 : 0;
+      // Regra: a comissão deve incidir sobre o valor da venda abatido de "Outros".
+      const netForCommission = Math.max(0, Number(initialData.saleValue ?? 0) - Number(initialData.otherClosingCosts ?? 0));
+      const percent = netForCommission > 0 ? (initialData.commissionValue / netForCommission) * 100 : 0;
       reset({
         saleValue: initialData.saleValue,
         commissionPercent: Math.round(percent * 100) / 100,
@@ -52,7 +54,9 @@ export function SaleFormDrawer({ open, onOpenChange, initialData, onSubmit }: Sa
   }, [open, initialData, reset]);
 
   const handleFormSubmit = (data: SaleFormData) => {
-    const commissionValue = (data.saleValue || 0) * ((data.commissionPercent || 0) / 100);
+    // Regra: "Outros" reduz a base de cálculo da comissão.
+    const netForCommission = Math.max(0, Number(data.saleValue || 0) - Number(data.otherClosingCosts || 0));
+    const commissionValue = netForCommission * ((data.commissionPercent || 0) / 100);
     onSubmit({ ...data, commissionValue });
     reset();
     onOpenChange(false);
@@ -80,7 +84,9 @@ export function SaleFormDrawer({ open, onOpenChange, initialData, onSubmit }: Sa
                 {(() => {
                   const v = watch('saleValue') || 0;
                   const p = watch('commissionPercent') || 0;
-                  const amount = v * (p / 100);
+                    const other = watch('otherClosingCosts') || 0;
+                    const net = Math.max(0, Number(v) - Number(other));
+                    const amount = net * (p / 100);
                   return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 })()}
               </span>

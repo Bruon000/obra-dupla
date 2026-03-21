@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "Company" ADD COLUMN "planSlug" TEXT NOT NULL DEFAULT 'free';
+ALTER TABLE "Company" ADD COLUMN "billingStatus" TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE "Company" ADD COLUMN "trialEndsAt" TIMESTAMP(3);
+ALTER TABLE "Company" ADD COLUMN "stripeCustomerId" TEXT;
+ALTER TABLE "Company" ADD COLUMN "stripeSubscriptionId" TEXT;
+ALTER TABLE "Company" ADD COLUMN "maxJobSites" INTEGER NOT NULL DEFAULT 999;
+ALTER TABLE "Company" ADD COLUMN "maxUsers" INTEGER NOT NULL DEFAULT 999;

@@ -1,10 +1,11 @@
-import { formatCurrency, formatDate } from '@/lib/formatters';
+import { formatCurrency, formatDate, formatTime } from '@/lib/formatters';
 import type { Expense, ConstructionMember } from '@/types';
 import { downloadAttachment } from '@/lib/attachments';
 import { Receipt, Pencil, Trash2, Paperclip, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AttachmentPreviewDialog } from './AttachmentPreviewDialog';
-import { useState } from 'react';
+import { ListPagination, LIST_PAGE_SIZE } from './ListPagination';
+import { useState, useMemo, useEffect } from 'react';
 
 interface ExpenseListProps {
   members: ConstructionMember[];
@@ -13,15 +14,54 @@ interface ExpenseListProps {
   onEdit?: (expense: Expense) => void;
   onDelete?: (expense: Expense) => void;
   canEdit?: (expense: Expense) => boolean;
+  /** Agrupa por categoria com cabeçalho e total por categoria */
+  groupByCategory?: boolean;
+  /** ID do item a destacar (ex.: vindo da auditoria) */
+  highlightedId?: string | null;
 }
 
-export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete, canEdit }: ExpenseListProps) {
+export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete, canEdit, groupByCategory, highlightedId }: ExpenseListProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<any | null>(null);
+  const [page, setPage] = useState(1);
 
   const filtered = filterByUser
     ? expenses.filter((e) => e.paidByUserId === filterByUser)
     : expenses;
+
+  const byCategory = useMemo(() => {
+    if (!groupByCategory) return null;
+    const map = new Map<string, { total: number; items: Expense[] }>();
+    for (const e of filtered) {
+      const cat = e.category || 'Outros';
+      const cur = map.get(cat);
+      if (!cur) map.set(cat, { total: e.totalValue, items: [e] });
+      else {
+        cur.total += e.totalValue;
+        cur.items.push(e);
+      }
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
+  }, [filtered, groupByCategory]);
+
+  const flatList = useMemo(() => {
+    if (byCategory) return byCategory.flatMap(([cat, { items }]) => items.map((e) => ({ expense: e, categoryName: cat })));
+    return filtered.map((e) => ({ expense: e, categoryName: null as string | null }));
+  }, [byCategory, filtered]);
+
+  const totalPages = Math.max(1, Math.ceil(flatList.length / LIST_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = flatList.slice((safePage - 1) * LIST_PAGE_SIZE, safePage * LIST_PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [totalPages, page]);
+
+  useEffect(() => {
+    if (!highlightedId || flatList.length === 0) return;
+    const idx = flatList.findIndex((p) => p.expense.id === highlightedId);
+    if (idx >= 0) setPage(Math.floor(idx / LIST_PAGE_SIZE) + 1);
+  }, [highlightedId, flatList]);
 
   if (filtered.length === 0) {
     return (
@@ -32,20 +72,19 @@ export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete,
     );
   }
 
-  return (
-    <div className="space-y-2">
-      {filtered.map((expense) => {
-        const payer = members.find((m) => m.userId === expense.paidByUserId);
-        const firstAttachment = expense.attachments?.[0] ?? null;
-        const heroThumb =
-          firstAttachment?.thumbnailBase64 && firstAttachment.mimeType?.startsWith("image/")
-            ? `data:${firstAttachment.mimeType};base64,${firstAttachment.thumbnailBase64}`
-            : null;
-        return (
-          <div
-            key={expense.id}
-            className="relative bg-card/60 rounded-3xl p-4 shadow-sm border border-border/50 animate-slide-up overflow-hidden"
-          >
+  const renderExpense = (expense: Expense, categoryName?: string | null) => {
+    const payer = members.find((m) => m.userId === expense.paidByUserId);
+    const firstAttachment = expense.attachments?.[0] ?? null;
+    const heroThumb =
+      firstAttachment?.thumbnailBase64 && firstAttachment.mimeType?.startsWith("image/")
+        ? `data:${firstAttachment.mimeType};base64,${firstAttachment.thumbnailBase64}`
+        : null;
+    const isHighlighted = highlightedId === expense.id;
+    return (
+      <div
+        key={expense.id}
+        className={`relative rounded-3xl p-4 shadow-sm border animate-slide-up overflow-hidden ${isHighlighted ? 'bg-primary/10 border-primary ring-2 ring-primary' : 'bg-card/60 border-border/50'}`}
+      >
             {heroThumb ? (
               <div className="absolute inset-0 opacity-25">
                 <img src={heroThumb} alt="" className="w-full h-full object-cover" />
@@ -57,7 +96,12 @@ export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete,
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{expense.description}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  {expense.category} · {formatDate(expense.date)} · {expense.weekLabel}
+                  {categoryName ?? expense.category} · {formatDate(expense.createdAt ?? expense.date)}
+                  {expense.weekLabel
+                    ? ` · ${expense.weekLabel}`
+                    : expense.createdAt
+                      ? ` · ${formatTime(expense.createdAt)}`
+                      : ''}
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -92,9 +136,14 @@ export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete,
               <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
                 {payer?.name ?? 'N/A'}
               </span>
-              {expense.attachments && expense.attachments.length > 0 && (
-                <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">Com comprovante</span>
-              )}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {expense.updatedAt && expense.createdAt && new Date(expense.updatedAt).getTime() > new Date(expense.createdAt).getTime() + 1000 && (
+                  <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full">Editado</span>
+                )}
+                {expense.attachments && expense.attachments.length > 0 && (
+                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">Com comprovante</span>
+                )}
+              </div>
               {expense.quantity > 1 && (
                 <span className="text-[11px] text-muted-foreground">
                   {expense.quantity} × {formatCurrency(expense.unitValue)}
@@ -150,8 +199,40 @@ export function ExpenseList({ members, expenses, filterByUser, onEdit, onDelete,
               </div>
             )}
           </div>
-        );
-      })}
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {byCategory ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1 py-1.5 flex-wrap gap-2">
+            {Array.from(new Set(paginated.map((p) => p.categoryName))).map((cat) => {
+              const total = byCategory.find(([c]) => c === cat)?.[1].total ?? 0;
+              return (
+                <span key={cat} className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {cat}: {formatCurrency(total)}
+                </span>
+              );
+            })}
+          </div>
+          <div className="space-y-2">
+            {paginated.map(({ expense, categoryName }) => renderExpense(expense, categoryName))}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {paginated.map(({ expense }) => renderExpense(expense, null))}
+        </div>
+      )}
+      <ListPagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        totalItems={flatList.length}
+        pageSize={LIST_PAGE_SIZE}
+        onPageChange={setPage}
+        itemLabel="gastos"
+      />
       <AttachmentPreviewDialog
         attachment={previewAttachment}
         open={previewOpen}

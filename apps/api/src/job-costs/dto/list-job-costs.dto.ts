@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsBooleanString, IsIn, IsOptional, IsString, IsUUID } from "class-validator";
 import { JOB_COST_PAYERS, JOB_COST_SOURCES } from "./upsert-job-cost.dto";
 
 export class ListJobCostsDto {
@@ -24,4 +24,8 @@ export class ListJobCostsDto {
   @IsOptional()
   @IsString()
   to?: string;
+
+  @IsOptional()
+  @IsBooleanString()
+  includeAttachments?: boolean;
 }

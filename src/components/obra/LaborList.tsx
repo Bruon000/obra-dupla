@@ -4,7 +4,8 @@ import { Hammer, Pencil, Trash2, Paperclip, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { downloadAttachment } from '@/lib/attachments';
 import { AttachmentPreviewDialog } from './AttachmentPreviewDialog';
-import { useState } from 'react';
+import { ListPagination, LIST_PAGE_SIZE } from './ListPagination';
+import { useState, useMemo, useEffect } from 'react';
 
 interface LaborListProps {
   members: ConstructionMember[];
@@ -12,12 +13,32 @@ interface LaborListProps {
   onEdit?: (entry: LaborEntry) => void;
   onDelete?: (entry: LaborEntry) => void;
   canEdit?: (entry: LaborEntry) => boolean;
+  /** ID do item a destacar (ex.: vindo da auditoria) */
+  highlightedId?: string | null;
 }
 
-export function LaborList({ members, entries, onEdit, onDelete, canEdit }: LaborListProps) {
+export function LaborList({ members, entries, onEdit, onDelete, canEdit, highlightedId }: LaborListProps) {
   const isImage = (mimeType: string | undefined) => !!mimeType && mimeType.startsWith("image/");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<any | null>(null);
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(entries.length / LIST_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = useMemo(
+    () => entries.slice((safePage - 1) * LIST_PAGE_SIZE, safePage * LIST_PAGE_SIZE),
+    [entries, safePage]
+  );
+
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [totalPages, page]);
+
+  useEffect(() => {
+    if (!highlightedId || entries.length === 0) return;
+    const idx = entries.findIndex((e) => e.id === highlightedId);
+    if (idx >= 0) setPage(Math.floor(idx / LIST_PAGE_SIZE) + 1);
+  }, [highlightedId, entries]);
 
   if (entries.length === 0) {
     return (
@@ -30,17 +51,18 @@ export function LaborList({ members, entries, onEdit, onDelete, canEdit }: Labor
 
   return (
     <div className="space-y-2">
-      {entries.map((entry) => {
+      {paginated.map((entry) => {
         const payer = members.find((m) => m.userId === entry.paidByUserId);
         const firstAttachment = entry.attachments?.[0] ?? null;
         const heroThumb =
           firstAttachment?.thumbnailBase64 && isImage(firstAttachment.mimeType)
             ? `data:${firstAttachment.mimeType};base64,${firstAttachment.thumbnailBase64}`
             : null;
+        const isHighlighted = highlightedId === entry.id;
         return (
           <div
             key={entry.id}
-            className="relative bg-card/60 rounded-3xl p-4 shadow-sm border border-border/50 animate-slide-up overflow-hidden"
+            className={`relative rounded-3xl p-4 shadow-sm border animate-slide-up overflow-hidden ${isHighlighted ? 'bg-primary/10 border-primary ring-2 ring-primary' : 'bg-card/60 border-border/50'}`}
           >
             {heroThumb ? (
               <div className="absolute inset-0 opacity-25">
@@ -79,9 +101,17 @@ export function LaborList({ members, entries, onEdit, onDelete, canEdit }: Labor
                 <span className="font-mono font-bold text-sm">{formatCurrency(entry.value)}</span>
               </div>
             </div>
-            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground mt-1">
-              {payer?.name ?? 'N/A'}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+              <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
+                {payer?.name ?? 'N/A'}
+              </span>
+              {entry.updatedAt && entry.createdAt && new Date(entry.updatedAt).getTime() > new Date(entry.createdAt).getTime() + 1000 && (
+                <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full">Editado</span>
+              )}
+              {entry.attachments && entry.attachments.length > 0 && (
+                <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">Com comprovante</span>
+              )}
+            </div>
             {entry.notes && (
               <p className="mt-2 pt-2 border-t border-border text-[11px] text-muted-foreground">Obs: {entry.notes}</p>
             )}
@@ -128,6 +158,14 @@ export function LaborList({ members, entries, onEdit, onDelete, canEdit }: Labor
           </div>
         );
       })}
+      <ListPagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        totalItems={entries.length}
+        pageSize={LIST_PAGE_SIZE}
+        onPageChange={setPage}
+        itemLabel="lançamentos"
+      />
       <AttachmentPreviewDialog
         attachment={previewAttachment}
         open={previewOpen}

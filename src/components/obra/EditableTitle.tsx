@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Pencil } from 'lucide-react';
 
 interface EditableTitleProps {
   initialTitle: string;
   onSave: (title: string) => void;
+  /** Quando true, apenas exibe o título (sem edição). */
+  readOnly?: boolean;
 }
 
-export function EditableTitle({ initialTitle, onSave }: EditableTitleProps) {
+export function EditableTitle({ initialTitle, onSave, readOnly }: EditableTitleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(initialTitle);
+  useEffect(() => setTitle(initialTitle), [initialTitle]);
 
   const handleBlur = () => {
     setIsEditing(false);
@@ -16,6 +19,10 @@ export function EditableTitle({ initialTitle, onSave }: EditableTitleProps) {
       onSave(title.trim());
     }
   };
+
+  if (readOnly) {
+    return <h1 className="text-xl font-bold tracking-tight">{initialTitle}</h1>;
+  }
 
   return (
     <div className="flex items-center gap-2 group">

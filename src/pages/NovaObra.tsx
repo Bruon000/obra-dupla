@@ -13,6 +13,8 @@ export default function NovaObra() {
   const [title, setTitle] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,8 +29,8 @@ export default function NovaObra() {
         address: address.trim(),
         notes: notes.trim(),
         status: 'EM_ANDAMENTO',
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: null,
+        startDate: startDate || null,
+        endDate: endDate ? endDate : null,
         saleValue: 0,
       });
       navigate(`/obras/${obra.id}`);
@@ -85,6 +87,29 @@ export default function NovaObra() {
               placeholder="Opcional"
               className="h-12 mt-1"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="startDate">Previsão de início</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-12 mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="endDate">Previsão de entrega (fim)</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-12 mt-1"
+              />
+            </div>
           </div>
           <Button type="submit" size="lg" className="w-full h-14 text-base font-bold mt-4">
             {saving ? 'Criando...' : 'Criar obra'}

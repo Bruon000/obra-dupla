@@ -14,7 +14,7 @@ export function ConstructionCard({ construction }: ConstructionCardProps) {
   return (
     <button
       onClick={() => navigate(`/obras/${construction.id}`)}
-      className="w-full bg-card rounded-xl p-3 shadow-card border border-border text-left transition-all active:scale-[0.99] animate-slide-up"
+      className="w-full bg-card/90 hover:bg-card rounded-xl p-3.5 shadow-sm border border-border text-left transition-all hover:border-primary/30 active:scale-[0.99]"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">

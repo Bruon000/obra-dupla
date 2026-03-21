@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.production
+.env.android.lan
+apps/api/.env
 
 # Editor directories and files
 .vscode/*
@@ -24,3 +28,9 @@ dist-ssr
 *.sw?
 
 obra_dupla_dump.txt
+
+# Rascunhos de imagem na raiz (assets versionados em src/assets/)
+ChatGPT Image*.png
+
+# URI temporária para script set-supabase-direct-url.ps1 (não commitar)
+apps/api/.supabase-direct-uri.txt
