@@ -24,7 +24,20 @@ export class JobSiteDocumentsService {
     return role === "ADMIN";
   }
 
+  async getById(companyId: string, id: string) {
+    const doc = await this.prisma.jobSiteDocument.findFirst({
+      where: { id, companyId, deletedAt: null },
+      include: {
+        createdByUser: { select: { id: true, name: true, email: true } },
+      },
+    });
+    if (!doc) throw new NotFoundException("Documento não encontrado.");
+    return doc;
+  }
+
   async list(companyId: string, jobSiteId: string, category?: string | null) {
+    // Não devolver fileDataBase64 na lista — pode ser enorme e causar OOM no Node ao serializar JSON.
+    // Miniatura e URL pública continuam (preview/download usam fileUrl ou thumbnail).
     return this.prisma.jobSiteDocument.findMany({
       where: {
         companyId,
@@ -33,7 +46,10 @@ export class JobSiteDocumentsService {
         ...(category ? { category } : {}),
       },
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: 200,
+      omit: {
+        fileDataBase64: true,
+      },
       include: {
         createdByUser: { select: { id: true, name: true, email: true } },
       },

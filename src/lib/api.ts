@@ -466,6 +466,11 @@ export async function listJobSiteDocuments(jobSiteId: string, category?: string)
   return apiFetch(`/job-site-documents?${qs.toString()}`);
 }
 
+/** Detalhe com fileDataBase64 (a lista omite o base64 para não sobrecarregar o servidor). */
+export async function getJobSiteDocument(id: string) {
+  return apiFetch(`/job-site-documents/${id}`);
+}
+
 export async function createJobSiteDocument(dto: JobSiteDocumentInput) {
   return apiFetch(`/job-site-documents`, { method: "POST", body: JSON.stringify(dto) });
 }

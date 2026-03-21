@@ -11,3 +11,6 @@ services:
     envVars:
       - key: HOST
         value: 0.0.0.0
+      # Plano grátis: evita OOM em picos de JSON (lista com muitos dados)
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=512

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { downloadAttachment } from "@/lib/attachments";
+import { getJobSiteDocument } from "@/lib/api";
 import type { JobSiteDocument, JobSiteDocumentCategory } from "@/types";
 import { Search, Upload, Trash2, Download } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
@@ -27,6 +28,7 @@ export function JobSiteDocumentsBlock(props: {
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<any | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [page, setPage] = useState(1);
 
   // Este card fica na tela inicial; por isso, não é pra ficar despejando lista/paginação.
@@ -73,6 +75,11 @@ export function JobSiteDocumentsBlock(props: {
     if (!props.currentUserId) return false;
     return d.uploadedByUserId === props.currentUserId;
   };
+
+  async function resolveDocumentForFileAccess(d: JobSiteDocument) {
+    if (d.fileUrl || d.fileDataBase64) return d;
+    return (await getJobSiteDocument(d.id)) as JobSiteDocument;
+  }
 
   const onFilesSelected = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -212,9 +219,16 @@ export function JobSiteDocumentsBlock(props: {
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => {
-                                  setPreviewAttachment(d);
-                                  setPreviewOpen(true);
+                                disabled={previewLoading}
+                                onClick={async () => {
+                                  setPreviewLoading(true);
+                                  try {
+                                    const full = await resolveDocumentForFileAccess(d);
+                                    setPreviewAttachment(full);
+                                    setPreviewOpen(true);
+                                  } finally {
+                                    setPreviewLoading(false);
+                                  }
                                 }}
                               >
                                 Abrir
@@ -223,7 +237,16 @@ export function JobSiteDocumentsBlock(props: {
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                onClick={() => downloadAttachment(d)}
+                                disabled={previewLoading}
+                                onClick={async () => {
+                                  setPreviewLoading(true);
+                                  try {
+                                    const full = await resolveDocumentForFileAccess(d);
+                                    downloadAttachment(full);
+                                  } finally {
+                                    setPreviewLoading(false);
+                                  }
+                                }}
                                 className="gap-2"
                               >
                                 <Download className="w-4 h-4" />

@@ -17,13 +17,14 @@ Guia fechado para o stack **front na Netlify** + **API no Render** + **Postgres 
 2. **Root Directory:** `apps/api`
 3. **Build command:** `npm install && npm run build`
 4. **Start command:** `npm start`
-5. **Environment → Environment Variables** (obrigatório):
+5. **Environment → Environment Variables:**
 
 | Variável | Valor |
 |----------|--------|
 | `DATABASE_URL` | String do Supabase (**Session mode / pooler**, porta **6543**). |
 | `JWT_SECRET` | String longa e aleatória (nunca commits; gera uma nova para produção). |
 | `HOST` | `0.0.0.0` |
+| `NODE_OPTIONS` (recomendado) | `--max-old-space-size=512` — reduz **heap out of memory** no plano grátis; a API também evita devolver base64 enorme nas listagens. |
 
 **Recomendado** (migrações pelo PC, como em `docs/SAAS-ENV.md`):
 

@@ -54,11 +54,10 @@ export class JobCostsService {
   }
 
   async list(companyId: string, query: ListJobCostsDto) {
-    // Garantia contra "false" string virando truthy.
+    // Por defeito NÃO incluir anexos (base64) — em produção (Render ~512MB) 800 linhas com
+    // comprovantes gigantes estourava o heap ao fazer JSON.stringify da resposta.
     const includeAttachments =
-      (query.includeAttachments as any) === undefined
-        ? true
-        : (query.includeAttachments as any) === true || (query.includeAttachments as any) === "true";
+      (query.includeAttachments as any) === true || (query.includeAttachments as any) === "true";
     return this.prisma.jobCostEntry.findMany({
       where: {
         companyId,
@@ -76,7 +75,7 @@ export class JobCostsService {
             }
           : {}),
       },
-      take: 800,
+      take: includeAttachments ? 200 : 800,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: {
         createdByUser: { select: { id: true, name: true, email: true } },

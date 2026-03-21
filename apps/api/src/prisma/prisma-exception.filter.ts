@@ -45,7 +45,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     if (exception instanceof Prisma.PrismaClientKnownRequestError) {
-      this.logger.error(`${exception.code}: ${exception.message}`, exception.meta);
+      const metaStr =
+        exception.meta && typeof exception.meta === "object"
+          ? JSON.stringify(exception.meta).slice(0, 2000)
+          : "";
+      this.logger.error(`${exception.code}: ${exception.message}${metaStr ? ` ${metaStr}` : ""}`);
       const status =
         exception.code === "P2025"
           ? HttpStatus.NOT_FOUND

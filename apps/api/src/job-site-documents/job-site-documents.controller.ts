@@ -15,6 +15,12 @@ export class JobSiteDocumentsController {
     return this.service.list(req.user.companyId, jobSiteId, category);
   }
 
+  /** Detalhe com fileDataBase64 (lista omite para não estourar memória no servidor). */
+  @Get(":id")
+  getOne(@Request() req: any, @Param("id") id: string) {
+    return this.service.getById(req.user.companyId, id);
+  }
+
   @Post()
   create(@Request() req: any, @Body() dto: UpsertJobSiteDocumentDto) {
     return this.service.create(req.user.companyId, req.user.id, dto);
