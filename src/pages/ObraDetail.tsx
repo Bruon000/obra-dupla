@@ -581,7 +581,7 @@ const ObraDetail = () => {
           return { ...m, name: u.name ?? m.name, email: u.email ?? m.email };
         })
       );
-      setDocuments(docsRes ?? []);
+      setDocuments((docsRes ?? []) as JobSiteDocument[]);
 
       // Para reduzir delay em ações (editar/cadastrar anexos), carregamos apenas
       // uma janela menor dos eventos mais recentes para a auditoria/notificações.
