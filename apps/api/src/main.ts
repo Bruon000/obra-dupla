@@ -5,11 +5,19 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
+import {
+  PrismaKnownRequestExceptionFilter,
+  PrismaValidationExceptionFilter,
+} from "./prisma/prisma-exception.filter";
 
 config({ path: resolve(process.cwd(), ".env") });
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useGlobalFilters(
+    new PrismaValidationExceptionFilter(),
+    new PrismaKnownRequestExceptionFilter(),
+  );
   app.enableCors({
     origin: true,
     methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],

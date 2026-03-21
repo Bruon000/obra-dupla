@@ -4,6 +4,7 @@ import { CreateJobSiteDto } from "./dto/create-jobsite.dto";
 import { UpdateJobSiteDto } from "./dto/update-jobsite.dto";
 import { ActivityFeedService } from "../activity-feed/activity-feed.service";
 import { TenantLimitsService } from "../tenant-limits/tenant-limits.service";
+import { jobSiteToJson } from "./job-site-json.util";
 
 function parseDateOnly(value?: string | null): Date | null {
   if (!value) return null;
@@ -52,12 +53,13 @@ export class JobSitesService {
     throw new ForbiddenException("Apenas admin pode editar a obra.");
   }
 
-  list(companyId: string) {
-    return this.prisma.jobSite.findMany({
+  async list(companyId: string) {
+    const rows = await this.prisma.jobSite.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 500,
     });
+    return rows.map((r) => jobSiteToJson(r as unknown as Record<string, unknown>));
   }
 
   async get(companyId: string, id: string) {
@@ -65,12 +67,12 @@ export class JobSitesService {
       where: { companyId, id, deletedAt: null },
     });
     if (!found) throw new NotFoundException("Obra não encontrada");
-    return found;
+    return jobSiteToJson(found as unknown as Record<string, unknown>);
   }
 
   async create(companyId: string, dto: CreateJobSiteDto) {
     await this.tenantLimits.assertCanCreateJobSite(companyId);
-    return this.prisma.jobSite.create({
+    const created = await this.prisma.jobSite.create({
       data: {
         companyId,
         title: dto.title,
@@ -87,6 +89,7 @@ export class JobSitesService {
         saleNotes: dto.saleNotes ?? "",
       },
     });
+    return jobSiteToJson(created as unknown as Record<string, unknown>);
   }
 
   async update(companyId: string, userId: string, id: string, dto: UpdateJobSiteDto) {
@@ -147,7 +150,7 @@ export class JobSitesService {
       },
     });
 
-    return updated;
+    return jobSiteToJson(updated as unknown as Record<string, unknown>);
   }
 
   async remove(companyId: string, userId: string, id: string) {
@@ -166,7 +169,7 @@ export class JobSitesService {
       before: { title: existing.title, saleValue: existing.saleValue },
     });
 
-    return deleted;
+    return jobSiteToJson(deleted as unknown as Record<string, unknown>);
   }
 }
 
