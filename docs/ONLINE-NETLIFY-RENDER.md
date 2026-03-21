@@ -85,6 +85,8 @@ O Postgres é o **Supabase** (ou outro). O site Netlify é só estático.
 
 O primeiro pedido após inatividade pode demorar **~1 min** (cold start). Normal.
 
+**Teste rápido no browser:** abre `https://obra-dupla.onrender.com/` ou `/health` — deve aparecer JSON `{"ok":true,...}`. Se não abrir, o problema é o serviço no Render (sleep, crash, URL errada), não a Netlify.
+
 ### CORS
 
 A API já usa `origin: true` no Nest; o front em `https://*.netlify.app` consegue chamar a API.

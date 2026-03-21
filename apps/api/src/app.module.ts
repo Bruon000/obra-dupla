@@ -10,6 +10,7 @@ import { SupportModule } from "./support/support.module";
 import { SupabaseModule } from "./supabase/supabase.module";
 import { StorageModule } from "./storage/storage.module";
 import { BillingModule } from "./billing/billing.module";
+import { HealthController } from "./health.controller";
 
 @Module({
   imports: [
@@ -25,7 +26,7 @@ import { BillingModule } from "./billing/billing.module";
     JobSiteDocumentsModule,
     SupportModule,
   ],
-  controllers: [],
+  controllers: [HealthController],
   providers: [],
 })
 export class AppModule {}

@@ -15,6 +15,16 @@ export class AuthMiddleware implements NestMiddleware {
     const rawPath: string = req.path || req.url || "";
     const path = rawPath.toString();
 
+    // Público: health check (Render/browser) e login/registo
+    if (
+      path === "/" ||
+      path === "" ||
+      path.startsWith("/health") ||
+      path.startsWith("health")
+    ) {
+      return next();
+    }
+
     // Libera todas as rotas de autenticação (com ou sem barra inicial)
     if (path.startsWith("/auth") || path.startsWith("auth")) {
       return next();
