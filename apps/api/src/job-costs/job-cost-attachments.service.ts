@@ -98,6 +98,33 @@ export class JobCostAttachmentsService {
     return created;
   }
 
+  /**
+   * Detalhe do anexo (incl. fileDataBase64 quando ainda está inline no banco).
+   * Usado para pré-visualização no front sem devolver base64 na listagem de custos.
+   */
+  async findOne(companyId: string, userId: string, id: string) {
+    const existing = await this.prisma.jobCostAttachment.findFirst({
+      where: { id, companyId, deletedAt: null },
+      include: {
+        jobCostEntry: {
+          select: { createdByUserId: true },
+        },
+        createdByUser: { select: { id: true, name: true, email: true } },
+      },
+    });
+    if (!existing) throw new NotFoundException("Anexo não encontrado");
+
+    const role = await this.getUserRole(userId);
+    const isAdmin = this.isAdmin(role);
+
+    if (!isAdmin && existing.jobCostEntry.createdByUserId !== userId) {
+      throw new ForbiddenException("Você só pode ver anexos de lançamentos que você mesmo criou.");
+    }
+
+    const { jobCostEntry: _jc, ...rest } = existing;
+    return rest;
+  }
+
   async update(companyId: string, userId: string, id: string, dto: UpsertJobCostAttachmentDto) {
     const existing = await this.prisma.jobCostAttachment.findFirst({
       where: { id, companyId, deletedAt: null },

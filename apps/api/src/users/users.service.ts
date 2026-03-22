@@ -1,4 +1,10 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import * as crypto from "node:crypto";
@@ -56,6 +62,7 @@ export class UsersService {
         role: true,
         companyId: true,
         createdAt: true,
+        disabledAt: true,
       },
     });
 
@@ -79,6 +86,7 @@ export class UsersService {
         name: true,
         role: true,
         createdAt: true,
+        disabledAt: true,
       },
       orderBy: { name: "asc" },
     });
@@ -122,7 +130,7 @@ export class UsersService {
 
     const existing = await this.prisma.user.findFirst({
       where: { companyId, id: userId },
-      select: { id: true, email: true, name: true, role: true, passwordHash: true },
+      select: { id: true, email: true, name: true, role: true, passwordHash: true, disabledAt: true },
     });
     if (!existing) throw new NotFoundException("Usuário não encontrado.");
 
@@ -130,6 +138,7 @@ export class UsersService {
       name: existing.name,
       email: existing.email,
       role: existing.role,
+      blocked: !!existing.disabledAt,
     };
 
     const data: any = {};
@@ -140,22 +149,40 @@ export class UsersService {
       const passwordHash = hashPassword(dto.password);
       data.passwordHash = passwordHash;
     }
+    if (dto.blocked === true) data.disabledAt = new Date();
+    if (dto.blocked === false) data.disabledAt = null;
 
     // Não permitir request vazio (evita auditoria “fantasma”)
     if (Object.keys(data).length === 0) {
-      return existing;
+      return await this.prisma.user.findFirst({
+        where: { id: userId, companyId },
+        select: { id: true, email: true, name: true, role: true, companyId: true, createdAt: true, disabledAt: true },
+      });
     }
 
     try {
       const updated = await this.prisma.user.update({
         where: { id: userId },
         data,
-        select: { id: true, email: true, name: true, role: true, companyId: true, createdAt: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          companyId: true,
+          createdAt: true,
+          disabledAt: true,
+        },
       });
 
       await this.activityFeed.create(companyId, actorUserId, "USER_UPDATED", "User", updated.id, {
         before,
-        after: { name: updated.name, email: updated.email, role: updated.role },
+        after: {
+          name: updated.name,
+          email: updated.email,
+          role: updated.role,
+          blocked: !!updated.disabledAt,
+        },
       });
 
       return updated;
@@ -165,5 +192,74 @@ export class UsersService {
       }
       throw e;
     }
+  }
+
+  /** Qualquer utilizador autenticado altera a própria senha (não requer ser admin). */
+  async changeOwnPassword(companyId: string, userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, companyId },
+      select: { id: true, email: true, passwordHash: true },
+    });
+    if (!user) throw new NotFoundException("Usuário não encontrado.");
+
+    const normalizedEmail = user.email.trim().toLowerCase();
+    const devPassword = process.env.DEV_USER_PASSWORD ?? "123456";
+    const isDevUser = normalizedEmail === "dev@obradupla.local";
+
+    const passwordOk = isDevUser
+      ? currentPassword === devPassword || verifyPassword(currentPassword, user.passwordHash)
+      : verifyPassword(currentPassword, user.passwordHash);
+
+    if (!passwordOk) {
+      throw new UnauthorizedException("Senha atual incorreta.");
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hashPassword(newPassword) },
+    });
+
+    await this.activityFeed.create(companyId, userId, "USER_PASSWORD_CHANGED_SELF", "User", userId, {
+      selfService: true,
+    });
+
+    return { ok: true };
+  }
+
+  /** Apaga o utilizador — deixa de conseguir entrar; participações em obras são removidas em cascata. */
+  async remove(companyId: string, actorUserId: string, targetUserId: string) {
+    await this.ensureAdminOrDeny(companyId, actorUserId, "USER_DELETE_DENIED");
+
+    if (targetUserId === actorUserId) {
+      throw new ForbiddenException("Não é possível remover a própria conta. Peça a outro administrador.");
+    }
+
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, companyId },
+      select: { id: true, email: true, name: true, role: true },
+    });
+    if (!target) throw new NotFoundException("Usuário não encontrado.");
+
+    const targetIsAdmin = String(target.role).toUpperCase() === "ADMIN";
+    if (targetIsAdmin) {
+      const companyUsers = await this.prisma.user.findMany({
+        where: { companyId },
+        select: { role: true },
+      });
+      const adminCount = companyUsers.filter((u) => String(u.role).toUpperCase() === "ADMIN").length;
+      if (adminCount <= 1) {
+        throw new ForbiddenException("Não é possível remover o único administrador da empresa.");
+      }
+    }
+
+    await this.prisma.user.delete({ where: { id: targetUserId } });
+
+    await this.activityFeed.create(companyId, actorUserId, "USER_DELETED", "User", targetUserId, {
+      email: target.email,
+      name: target.name,
+      role: target.role,
+    });
+
+    return { ok: true };
   }
 }

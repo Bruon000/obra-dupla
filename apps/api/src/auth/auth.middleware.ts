@@ -43,6 +43,13 @@ export class AuthMiddleware implements NestMiddleware {
       return res.status(401).json({ statusCode: 401, message: "Usuário não encontrado." });
     }
 
+    if (user.disabledAt) {
+      return res.status(401).json({
+        statusCode: 401,
+        message: "Conta desativada. Faça login novamente após o administrador reativar o acesso.",
+      });
+    }
+
     req.user = user;
 
     // Modo "suporte somente leitura" (PLATFORM_SUPPORT).

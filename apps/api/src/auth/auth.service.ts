@@ -105,6 +105,15 @@ export class AuthService {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        companyId: true,
+        role: true,
+        passwordHash: true,
+        disabledAt: true,
+      },
     });
     if (!user) {
       throw new UnauthorizedException("E-mail ou senha inválidos.");
@@ -121,11 +130,21 @@ export class AuthService {
       throw new UnauthorizedException("E-mail ou senha inválidos.");
     }
 
+    if (user.disabledAt) {
+      throw new UnauthorizedException("Esta conta foi desativada. Contacte o administrador.");
+    }
+
     if (!isDevUser) {
       await this.assertCompanyAllowsLogin(user.companyId);
     }
 
-    return this.issueAuthResponse(user);
+    return this.issueAuthResponse({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      companyId: user.companyId,
+      role: user.role,
+    });
   }
 
   async register(dto: RegisterDto) {
@@ -184,7 +203,7 @@ export class AuthService {
   async getUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, email: true, name: true, companyId: true, role: true },
+      select: { id: true, email: true, name: true, companyId: true, role: true, disabledAt: true },
     });
   }
 }

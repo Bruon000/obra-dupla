@@ -32,6 +32,8 @@ export interface ExpenseAttachment {
   id: string;
   fileName: string;
   mimeType: string;
+  /** Preenchido quando o arquivo está no storage (R2 etc.); a lista pode omitir base64. */
+  fileUrl?: string | null;
   fileDataBase64?: string;
   thumbnailBase64?: string | null;
   createdAt?: string;

@@ -4,7 +4,7 @@ import { MobileShell } from '@/components/layout/MobileShell';
 import { ConstructionCard } from '@/components/obra/ConstructionCard';
 import { useConstructions } from '@/contexts/ConstructionsContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { HardHat, LogOut } from 'lucide-react';
+import { HardHat, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { APP_NAME } from '@/lib/app-config';
 import type { ConstructionStatus } from '@/types';
@@ -48,9 +48,14 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">{user ? `Olá, ${user.name}` : APP_NAME}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair" className="shrink-0">
-            <LogOut className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/conta')} title="Minha conta">
+              <User className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         <h2 className="text-xs uppercase tracking-widest font-semibold text-muted-foreground mb-3">

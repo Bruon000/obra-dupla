@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, MinLength } from "class-validator";
+import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from "class-validator";
 
 export class UpdateUserDto {
   @IsOptional()
@@ -20,5 +20,10 @@ export class UpdateUserDto {
   @IsString()
   @MinLength(6, { message: "Senha deve ter no mínimo 6 caracteres" })
   password?: string;
+
+  /** true = bloqueia login; false = reativa. Só admin (via update). */
+  @IsOptional()
+  @IsBoolean()
+  blocked?: boolean;
 }
 

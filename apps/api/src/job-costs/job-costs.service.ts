@@ -95,6 +95,8 @@ export class JobCostsService {
                 mimeType: true,
                 storageType: true,
                 fileUrl: true,
+                /** Leve; permite miniatura na lista/prévia sem base64 do arquivo inteiro */
+                thumbnailBase64: true,
                 version: true,
                 deviceId: true,
                 lastSyncedAt: true,

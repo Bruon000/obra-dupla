@@ -297,6 +297,11 @@ export type UpsertJobCostAttachmentInput = {
   notes?: string | null;
 };
 
+/** Detalhe com fileDataBase64 quando o anexo está só no banco (a lista omite base64 para não estourar memória). */
+export async function getJobCostAttachment(id: string): Promise<JobCostAttachment> {
+  return apiFetch<JobCostAttachment>(`/job-cost-attachments/${id}`);
+}
+
 export async function createJobCostAttachment(dto: UpsertJobCostAttachmentInput): Promise<JobCostAttachment> {
   return apiFetch<JobCostAttachment>("/job-cost-attachments", { method: "POST", body: JSON.stringify(dto) });
 }
@@ -386,6 +391,8 @@ export type CompanyUser = {
   role: string;
   companyId?: string;
   createdAt?: string;
+  /** Se definido, login bloqueado (sócio desligado). */
+  disabledAt?: string | null;
 };
 
 export type CreateUserInput = {
@@ -416,10 +423,25 @@ export type UpdateUserInput = {
   email?: string;
   role?: string;
   password?: string;
+  /** true = bloqueia login; false = reativa */
+  blocked?: boolean;
 };
 
 export async function updateUser(userId: string, dto: UpdateUserInput): Promise<CompanyUser> {
   return apiFetch<CompanyUser>(`/users/${userId}`, { method: "PATCH", body: JSON.stringify(dto) });
+}
+
+/** Troca de senha pelo próprio utilizador (não requer ser admin). */
+export async function changeOwnPassword(currentPassword: string, newPassword: string): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>("/users/me/password", {
+    method: "PATCH",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+/** Remove o utilizador da empresa (revoga login). Só admin. */
+export async function deleteUser(userId: string): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>(`/users/${userId}`, { method: "DELETE" });
 }
 
 // -----------------------------

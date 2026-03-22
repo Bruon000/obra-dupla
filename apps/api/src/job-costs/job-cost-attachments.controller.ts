@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Param, Patch, Post, Request } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request } from "@nestjs/common";
 import { UpsertJobCostAttachmentDto } from "./dto/upsert-job-cost-attachment.dto";
 import { JobCostAttachmentsService } from "./job-cost-attachments.service";
 
@@ -9,6 +9,11 @@ export class JobCostAttachmentsController {
   @Post()
   create(@Request() req: any, @Body() dto: UpsertJobCostAttachmentDto) {
     return this.service.create(req.user.companyId, req.user.id, dto);
+  }
+
+  @Get(":id")
+  findOne(@Request() req: any, @Param("id") id: string) {
+    return this.service.findOne(req.user.companyId, req.user.id, id);
   }
 
   @Patch(":id")

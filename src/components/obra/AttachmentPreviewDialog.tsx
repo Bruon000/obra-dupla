@@ -2,8 +2,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import type { JobSiteDocument } from "@/types";
 import type { ExpenseAttachment } from "@/types";
 import { Button } from "@/components/ui/button";
-import { downloadAttachment } from "@/lib/attachments";
-import { Download, ExternalLink } from "lucide-react";
+import { downloadAttachment, isUsableRemoteFileUrl } from "@/lib/attachments";
+import { getJobCostAttachment, getJobSiteDocument } from "@/lib/api";
+import { Download, ExternalLink, Loader2 } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
 
 type Downloadable = Pick<ExpenseAttachment, "fileName" | "mimeType" | "fileDataBase64"> & { fileUrl?: string | null };
@@ -15,26 +16,86 @@ type Props = {
 
 export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Props) {
   const [iframeBlobUrl, setIframeBlobUrl] = useState<string | null>(null);
+  const [resolvedAttachment, setResolvedAttachment] = useState<Downloadable | JobSiteDocument | null>(null);
+  const [resolveLoading, setResolveLoading] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+
+  const effective = resolvedAttachment ?? attachment;
 
   const dataUrl = useMemo(() => {
-    if (!attachment) return null;
-    const fileUrl = (attachment as any).fileUrl;
-    const fileDataBase64 = (attachment as any).fileDataBase64;
-    const mimeType = (attachment as any).mimeType;
-    if (fileUrl) return fileUrl as string;
-    if (!fileDataBase64) return null;
-    return `data:${mimeType || "application/octet-stream"};base64,${fileDataBase64}`;
-  }, [attachment]);
+    if (!effective) return null;
+    const fileUrl = (effective as any).fileUrl;
+    const fileDataBase64 = (effective as any).fileDataBase64;
+    const thumbnailBase64 = (effective as any).thumbnailBase64;
+    const mimeType = (effective as any).mimeType as string | undefined;
+    if (fileUrl && isUsableRemoteFileUrl(fileUrl as string)) return fileUrl as string;
+    if (fileDataBase64) return `data:${mimeType || "application/octet-stream"};base64,${fileDataBase64}`;
+    // Só miniatura no banco (comum em fotos) — ainda dá prévia; PDF precisa de URL ou bytes completos.
+    if (thumbnailBase64 && mimeType?.startsWith("image/")) {
+      return `data:${mimeType};base64,${thumbnailBase64}`;
+    }
+    return null;
+  }, [effective]);
 
-  const mimeType = (attachment as any)?.mimeType as string | undefined;
-  const fileName = (attachment as any)?.fileName as string | undefined;
+  const mimeType = (effective as any)?.mimeType as string | undefined;
+  const fileName = (effective as any)?.fileName as string | undefined;
 
   const isImage = !!mimeType && mimeType.startsWith("image/");
   const useIframe = !isImage && !!dataUrl;
 
+  const attId = attachment?.id;
+  const attFileUrl = (attachment as any)?.fileUrl as string | null | undefined;
+  const attFileData = (attachment as any)?.fileDataBase64 as string | null | undefined;
+  const attJobSiteId = (attachment as any)?.jobSiteId as string | null | undefined;
+  const attUrlUsable = attFileUrl && isUsableRemoteFileUrl(attFileUrl);
+
+  // Busca detalhe quando a lista só tem metadados (sem fileUrl nem base64 completo).
+  // Miniatura sozinha não basta para baixar o arquivo original — ainda buscamos o detalhe.
+  // fileUrl antigo (localhost) conta como "sem URL" — tentamos GET para ver se há base64/R2 na API.
+  useEffect(() => {
+    if (!open) {
+      setResolvedAttachment(null);
+      setResolveError(null);
+      setResolveLoading(false);
+      return;
+    }
+    if (!attId) {
+      setResolvedAttachment(null);
+      return;
+    }
+    if (attUrlUsable || attFileData) {
+      setResolvedAttachment(null);
+      return;
+    }
+
+    let cancelled = false;
+    setResolveLoading(true);
+    setResolveError(null);
+    setResolvedAttachment(null);
+    (async () => {
+      try {
+        const full =
+          attJobSiteId != null && String(attJobSiteId).length > 0
+            ? await getJobSiteDocument(attId)
+            : await getJobCostAttachment(attId);
+        if (!cancelled) setResolvedAttachment(full as Downloadable | JobSiteDocument);
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setResolveError(e instanceof Error ? e.message : "Falha ao carregar anexo");
+          setResolvedAttachment(null);
+        }
+      } finally {
+        if (!cancelled) setResolveLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, attId, attUrlUsable, attFileData, attJobSiteId]);
+
   // Data URL em iframe costuma ficar preto (PDF e outros). Usar blob URL para qualquer anexo no iframe.
   useEffect(() => {
-    if (!open || !useIframe || !(attachment as any)?.fileDataBase64) {
+    if (!open || !useIframe || !(effective as any)?.fileDataBase64) {
       if (iframeBlobUrl) {
         URL.revokeObjectURL(iframeBlobUrl);
         setIframeBlobUrl(null);
@@ -43,7 +104,7 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
     }
     let url: string | null = null;
     try {
-      const base64 = (attachment as any).fileDataBase64 as string;
+      const base64 = (effective as any).fileDataBase64 as string;
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -57,7 +118,7 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
       if (url) URL.revokeObjectURL(url);
       setIframeBlobUrl(null);
     };
-  }, [open, useIframe, attachment, mimeType]);
+  }, [open, useIframe, effective, mimeType]);
 
   useEffect(() => {
     if (!open && iframeBlobUrl) {
@@ -70,7 +131,8 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
     if (dataUrl) window.open(dataUrl, "_blank", "noopener,noreferrer");
   };
 
-  const iframeSrc = (attachment as any)?.fileUrl || iframeBlobUrl;
+  const rawFileUrl = (effective as any)?.fileUrl as string | undefined;
+  const iframeSrc = (rawFileUrl && isUsableRemoteFileUrl(rawFileUrl) ? rawFileUrl : null) || iframeBlobUrl;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -84,7 +146,22 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
           </DialogHeader>
 
           <div className="w-full min-h-[200px] bg-muted/30 rounded-md flex items-center justify-center overflow-hidden">
-            {dataUrl && isImage ? (
+            {resolveLoading && !dataUrl ? (
+              <div className="flex flex-col items-center gap-3 p-8 text-muted-foreground">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <p className="text-sm">Carregando prévia…</p>
+              </div>
+            ) : resolveError && !dataUrl ? (
+              <div className="text-sm text-muted-foreground p-6 text-center space-y-3">
+                <p>{resolveError}</p>
+                {effective ? (
+                  <Button type="button" variant="outline" onClick={() => downloadAttachment(effective as any)} className="gap-2">
+                    <Download className="w-4 h-4" />
+                    Baixar
+                  </Button>
+                ) : null}
+              </div>
+            ) : dataUrl && isImage ? (
               <img src={dataUrl} alt={fileName ?? "arquivo"} className="w-full max-h-[70vh] object-contain rounded-md border border-border" />
             ) : useIframe ? (
               iframeSrc ? (
@@ -105,8 +182,8 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
                       <ExternalLink className="w-4 h-4" />
                       Abrir em nova aba
                     </Button>
-                    {attachment && (
-                      <Button type="button" variant="default" size="sm" onClick={() => downloadAttachment(attachment as any)} className="gap-2">
+                    {effective && (
+                      <Button type="button" variant="default" size="sm" onClick={() => downloadAttachment(effective as any)} className="gap-2">
                         <Download className="w-4 h-4" />
                         Baixar
                       </Button>
@@ -116,9 +193,9 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
               )
             ) : (
               <div className="text-sm text-muted-foreground p-6 text-center space-y-3">
-                <p>Não foi possível gerar prévia. Use o botão Baixar para abrir no seu dispositivo.</p>
-                {attachment && (
-                  <Button type="button" variant="outline" onClick={() => downloadAttachment(attachment as any)} className="gap-2">
+                <p>Não foi possível gerar prévia. Use o botão Baixar ou reenvie o comprovante (arquivos antigos de teste podem não ter link na nuvem).</p>
+                {effective && (
+                  <Button type="button" variant="outline" onClick={() => downloadAttachment(effective as any)} className="gap-2">
                     <Download className="w-4 h-4" />
                     Baixar
                   </Button>
@@ -134,11 +211,11 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
                 Abrir em nova aba
               </Button>
             )}
-            {attachment ? (
+            {effective ? (
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => downloadAttachment(attachment as any)}
+                onClick={() => downloadAttachment(effective as any)}
               >
                 <Download className="w-4 h-4" />
                 Baixar
@@ -150,4 +227,3 @@ export function AttachmentPreviewDialog({ attachment, open, onOpenChange }: Prop
     </Dialog>
   );
 }
-

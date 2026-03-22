@@ -4,8 +4,23 @@ type DownloadableFile = Pick<ExpenseAttachment, "fileName" | "mimeType" | "fileD
   fileUrl?: string | null;
 };
 
+/** URL pública válida para o browser em produção (não localhost / loopback). */
+export function isUsableRemoteFileUrl(url: string | null | undefined): boolean {
+  if (url == null || typeof url !== "string") return false;
+  const t = url.trim();
+  if (!t) return false;
+  try {
+    const u = new URL(t);
+    const h = u.hostname.toLowerCase();
+    if (h === "localhost" || h === "127.0.0.1" || h === "::1") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function attachmentToDataUrl(att: DownloadableFile): string | null {
-  if (att.fileUrl) return att.fileUrl;
+  if (att.fileUrl && isUsableRemoteFileUrl(att.fileUrl)) return att.fileUrl;
   if (!att.fileDataBase64) return null;
   return `data:${att.mimeType || "application/octet-stream"};base64,${att.fileDataBase64}`;
 }
@@ -34,7 +49,7 @@ export async function fileToExpenseAttachment(file: File): Promise<ExpenseAttach
 }
 
 export function openAttachment(att: DownloadableFile) {
-  if (att.fileUrl) {
+  if (att.fileUrl && isUsableRemoteFileUrl(att.fileUrl)) {
     window.open(att.fileUrl, "_blank", "noopener,noreferrer");
     return;
   }
@@ -50,7 +65,7 @@ export function openAttachment(att: DownloadableFile) {
 }
 
 export function downloadAttachment(att: DownloadableFile) {
-  if (att.fileUrl) {
+  if (att.fileUrl && isUsableRemoteFileUrl(att.fileUrl)) {
     const a = document.createElement("a");
     a.href = att.fileUrl;
     a.target = "_blank";

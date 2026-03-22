@@ -3,8 +3,17 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createUser, listUsers, type CompanyUser } from "@/lib/api";
+import { createUser, deleteUser, listUsers, updateUser, type CompanyUser } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Users() {
   const [users, setUsers] = useState<CompanyUser[]>([]);
@@ -26,6 +35,8 @@ export default function Users() {
   const [editRole, setEditRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
   const [editPassword, setEditPassword] = useState("");
   const [editingSaving, setEditingSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CompanyUser | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const sorted = useMemo(() => {
     return [...users].sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
@@ -46,8 +57,13 @@ export default function Users() {
   };
 
   useEffect(() => {
-    refresh();
-  }, []);
+    if (!isAdmin) {
+      setLoading(false);
+      setError("");
+      return;
+    }
+    void refresh();
+  }, [isAdmin]);
 
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,17 +128,48 @@ export default function Users() {
     }
   };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await deleteUser(deleteTarget.id);
+      setUsers((prev) => prev.filter((x) => x.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (e: any) {
+      setError(e?.message ?? "Falha ao remover utilizador");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <MobileShell>
       <div className="px-4 py-6 space-y-6">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Usuários</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Usuários são sempre criados dentro da mesma empresa (\(companyId\)) do usuário logado.
+            {isAdmin
+              ? `Novos utilizadores ficam na mesma empresa (${authUser?.companyId?.slice(0, 8)}…).`
+              : "Apenas o administrador pode criar ou editar contas. Para alterar a tua senha, pede ao admin."}
           </p>
         </div>
 
-        {error && (
+        {!isAdmin ? (
+          <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">Contas da empresa</p>
+            <p className="mt-2">
+              Não tens permissão para criar utilizadores. O formulário que aparecia antes era só visual — a API só aceita pedidos do{" "}
+              <strong>admin</strong>.
+            </p>
+            <p className="mt-2">
+              <strong>Alterar a tua senha:</strong> vai a <strong>Início</strong> (ícone do utilizador) → <strong>Minha conta</strong> e define uma nova
+              senha sem precisar do admin.
+            </p>
+          </div>
+        ) : null}
+
+        {error && isAdmin && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
             {error}
             <div className="mt-2">
@@ -133,6 +180,8 @@ export default function Users() {
           </div>
         )}
 
+        {isAdmin ? (
+        <>
         <div className="rounded-xl border border-border bg-card p-4">
           <h2 className="text-xs uppercase tracking-widest font-bold text-muted-foreground mb-3">Criar usuário</h2>
           <form onSubmit={onCreate} className="space-y-3">
@@ -187,9 +236,14 @@ export default function Users() {
                       <p className="font-bold text-sm truncate">{u.name}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{u.email}</p>
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
-                      {u.role === "ADMIN" ? "Admin" : "Sócio"}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
+                        {u.role === "ADMIN" ? "Admin" : "Sócio"}
+                      </span>
+                      {u.disabledAt ? (
+                        <span className="text-[9px] font-bold uppercase text-destructive">Login bloqueado</span>
+                      ) : null}
+                    </div>
                   </div>
 
                   {isAdmin ? (
@@ -242,10 +296,32 @@ export default function Users() {
                         </div>
                       </div>
                     ) : (
-                      <div className="mt-3 flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => startEdit(u)} disabled={editingSaving} className="flex-1">
+                      <div className="mt-3 flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" onClick={() => startEdit(u)} disabled={editingSaving} className="flex-1 min-w-[100px]">
                           Editar
                         </Button>
+                        {authUser?.id && u.id !== authUser.id ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant={u.disabledAt ? "secondary" : "outline"}
+                              className="flex-1 min-w-[100px] border-destructive/50 text-destructive"
+                              onClick={() => void toggleBlockUser(u)}
+                              disabled={editingSaving}
+                            >
+                              {u.disabledAt ? "Desbloquear login" : "Bloquear login"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="flex-1 min-w-[100px]"
+                              onClick={() => setDeleteTarget(u)}
+                              disabled={editingSaving}
+                            >
+                              Apagar conta
+                            </Button>
+                          </>
+                        ) : null}
                       </div>
                     )
                   ) : null}
@@ -254,6 +330,31 @@ export default function Users() {
             </div>
           )}
         </div>
+        </>
+        ) : null}
+
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && !deleting && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Apagar conta definitivamente?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteTarget ? (
+                  <>
+                    A conta <strong>{deleteTarget.name}</strong> ({deleteTarget.email}) será <strong>eliminada</strong>. Para só bloquear o login,
+                    use <strong>Bloquear login</strong> em vez disto. Ao apagar, a participação nas obras é removida; o histórico de lançamentos
+                    mantém-se onde já estava registado.
+                  </>
+                ) : null}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+              <Button type="button" variant="destructive" disabled={deleting} onClick={() => void confirmDelete()}>
+                {deleting ? "A apagar…" : "Apagar conta"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MobileShell>
   );

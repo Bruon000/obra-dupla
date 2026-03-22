@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Receipt, Gavel, Hammer, TrendingUp, FileText, Plus, MapPin, Bell, Pencil } from 'lucide-react';
+import { ArrowLeft, Receipt, Gavel, Hammer, TrendingUp, FileText, Plus, MapPin, Bell, Pencil, FileDown } from 'lucide-react';
 import { MobileShell } from '@/components/layout/MobileShell';
 import { EditableTitle } from '@/components/obra/EditableTitle';
 import { StatusBadge } from '@/components/obra/StatusBadge';
@@ -15,6 +15,7 @@ import { LaborFormDrawer } from '@/components/obra/LaborFormDrawer';
 import { SaleFormDrawer } from '@/components/obra/SaleFormDrawer';
 import { MembersConfigDrawer } from '@/components/obra/MembersConfigDrawer';
 import { AuditLogList, type AuditEntry } from '@/components/obra/AuditLogList';
+import { exportJobCostsToPdf } from '@/lib/exportJobCostsPdf';
 import { calculateObraTotals } from '@/lib/calculations';
 import { formatCurrency } from '@/lib/formatters';
 import { useConstructions } from '@/contexts/ConstructionsContext';
@@ -1378,6 +1379,15 @@ const ObraDetail = () => {
     setActiveTab('gastos');
   };
 
+  const handleExportPdf = useCallback(() => {
+    if (!construction) return;
+    exportJobCostsToPdf({
+      obraTitle: construction.title,
+      obraAddress: construction.address || undefined,
+      entries: jobCosts,
+    });
+  }, [construction, jobCosts]);
+
   return (
     <MobileShell showNav={false}>
       <div className="relative min-h-screen bg-background overflow-hidden">
@@ -1466,6 +1476,18 @@ const ObraDetail = () => {
                 )}
               </SheetContent>
             </Sheet>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-9 px-2.5 shrink-0 text-[10px] font-extrabold uppercase tracking-wide"
+              onClick={handleExportPdf}
+              disabled={isPlatformSupport}
+              title="Exportar todos os gastos por categoria (PDF)"
+            >
+              <FileDown className="w-4 h-4" />
+              PDF gastos
+            </Button>
             <StatusBadge status={construction.status} />
           </div>
 
