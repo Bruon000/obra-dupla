@@ -41,6 +41,7 @@ Em desenvolvimento o front aponta para a API em `http://<teu-host>:3005` (mesmo 
 
 - **Ver o projeto só online (Netlify + Render como fica na net):** [`docs/PREVIEW-ONLINE.md`](docs/PREVIEW-ONLINE.md)  
 - **Testar 100% grátis no PC (sem depender do Render):** [`docs/TESTAR-GRATIS.md`](docs/TESTAR-GRATIS.md)  
+- **API grátis na Oracle Cloud (VM):** [`docs/DEPLOY-API-ORACLE.md`](docs/DEPLOY-API-ORACLE.md)  
 - **Site online (Netlify + Render):** [`docs/ONLINE-NETLIFY-RENDER.md`](docs/ONLINE-NETLIFY-RENDER.md) — checklist com `VITE_API_URL`, Render e migrações.  
 - Variáveis e billing: [`docs/SAAS-ENV.md`](docs/SAAS-ENV.md)  
 - Deploy geral / APK: [`docs/DEPLOY-CANTEIRO.md`](docs/DEPLOY-CANTEIRO.md)  
