@@ -57,7 +57,7 @@ export class JobSitesService {
     const rows = await this.prisma.jobSite.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: 200,
     });
     return rows.map((r) => jobSiteToJson(r as unknown as Record<string, unknown>));
   }

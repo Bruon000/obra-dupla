@@ -46,7 +46,7 @@ export class JobSiteDocumentsService {
         ...(category ? { category } : {}),
       },
       orderBy: { createdAt: "desc" },
-      take: 200,
+      take: 100,
       omit: {
         fileDataBase64: true,
       },

@@ -5,11 +5,16 @@ import { Controller, Get } from "@nestjs/common";
 export class HealthController {
   @Get()
   root() {
-    return { ok: true, service: "canteiro-api" };
+    return {
+      ok: true,
+      service: "canteiro-api",
+      /** Render injeta em deploys Git; útil para confirmar qual revisão está no ar. */
+      commit: process.env.RENDER_GIT_COMMIT ?? null,
+    };
   }
 
   @Get("health")
   health() {
-    return { ok: true };
+    return { ok: true, commit: process.env.RENDER_GIT_COMMIT ?? null };
   }
 }

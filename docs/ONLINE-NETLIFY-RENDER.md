@@ -26,7 +26,7 @@ Guia fechado para o stack **front na Netlify** + **API no Render** + **Postgres 
 | `DATABASE_URL` | String do Supabase (**Session mode / pooler**, porta **6543**). |
 | `JWT_SECRET` | String longa e aleatória (nunca commits; gera uma nova para produção). |
 | `HOST` | `0.0.0.0` |
-| `NODE_OPTIONS` (opcional) | `--max-old-space-size=384` — o `npm start` da API **já** fixa 384MB no comando; só defines isto se quiseres outro valor. |
+| `NODE_OPTIONS` (opcional) | `--max-old-space-size=320` — o `npm start` da API **já** fixa ~320MB no comando; só defines isto se quiseres outro valor. |
 
 **Recomendado** (migrações pelo PC, como em `docs/SAAS-ENV.md`):
 
@@ -46,6 +46,8 @@ No teu PC (com `DATABASE_URL_DIRECT` no `apps/api/.env` para o **mesmo** Supabas
 cd apps/api
 npx prisma migrate deploy
 ```
+
+Se não conseguires ligar pelo terminal (**P1001**), aplica SQL no painel Supabase e sincroniza com `prisma migrate resolve` — vê **[`docs/APLICAR-MIGRACAO-SUPABASE.md`](APLICAR-MIGRACAO-SUPABASE.md)**.
 
 ---
 

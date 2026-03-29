@@ -54,11 +54,10 @@ export class JobCostsService {
   }
 
   async list(companyId: string, query: ListJobCostsDto) {
-    // Por defeito NÃO incluir anexos (base64) — em produção (Render ~512MB) 800 linhas com
-    // comprovantes gigantes estourava o heap ao fazer JSON.stringify da resposta.
+    // Por defeito NÃO incluir anexos (base64) — Render ~512MB: menos linhas + sem thumb base64 na lista.
     const includeAttachments =
       (query.includeAttachments as any) === true || (query.includeAttachments as any) === "true";
-    return this.prisma.jobCostEntry.findMany({
+    const rows = await this.prisma.jobCostEntry.findMany({
       where: {
         companyId,
         jobSiteId: query.jobSiteId,
@@ -75,7 +74,7 @@ export class JobCostsService {
             }
           : {}),
       },
-      take: includeAttachments ? 100 : 400,
+      take: includeAttachments ? 60 : 200,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: {
         createdByUser: { select: { id: true, name: true, email: true } },
@@ -95,8 +94,7 @@ export class JobCostsService {
                 mimeType: true,
                 storageType: true,
                 fileUrl: true,
-                /** Leve; permite miniatura na lista/prévia sem base64 do arquivo inteiro */
-                thumbnailBase64: true,
+                /** Omitido na lista: miniaturas grandes ainda estouram RAM ao serializar JSON. */
                 version: true,
                 deviceId: true,
                 lastSyncedAt: true,
@@ -112,6 +110,7 @@ export class JobCostsService {
           : false,
       },
     });
+    return rows;
   }
 
   async create(companyId: string, userId: string, dto: UpsertJobCostDto) {

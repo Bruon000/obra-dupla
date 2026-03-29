@@ -6,7 +6,8 @@ services:
     name: obra-dupla
     runtime: node
     rootDir: apps/api
-    buildCommand: npm install && npm run build
+    # apps/api inclui package-lock.json — npm ci é mais rápido e reproduzível que npm install
+    buildCommand: npm ci && npm run build
     startCommand: npm start
     envVars:
       - key: HOST
@@ -14,4 +15,4 @@ services:
       # Plano grátis: evita OOM em picos de JSON (lista com muitos dados)
       # Plano grátis ~512MB RAM total — 384MB heap deixa margem ao SO/Prisma
       - key: NODE_OPTIONS
-        value: --max-old-space-size=384
+        value: --max-old-space-size=320

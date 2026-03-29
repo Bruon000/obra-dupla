@@ -2,8 +2,9 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
-const MAX_PAYLOAD_STR = 6000;
-const MAX_PAYLOAD_DEPTH = 10;
+/** Respostas menores = menos RAM ao serializar JSON (Render free tier). */
+const MAX_PAYLOAD_STR = 4000;
+const MAX_PAYLOAD_DEPTH = 8;
 
 /** Evita JSON gigante na resposta (auditoria pode ter gravado base64 em payload). */
 function sanitizePayloadForApi(value: unknown, depth = 0): unknown {
@@ -15,17 +16,17 @@ function sanitizePayloadForApi(value: unknown, depth = 0): unknown {
   }
   if (typeof value === "number" || typeof value === "boolean") return value;
   if (Array.isArray(value)) {
-    return value.slice(0, 50).map((x) => sanitizePayloadForApi(x, depth + 1));
+    return value.slice(0, 30).map((x) => sanitizePayloadForApi(x, depth + 1));
   }
   if (typeof value === "object") {
     const o = value as Record<string, unknown>;
     const out: Record<string, unknown> = {};
     const keys = Object.keys(o);
-    for (let i = 0; i < Math.min(keys.length, 60); i++) {
+    for (let i = 0; i < Math.min(keys.length, 40); i++) {
       const k = keys[i];
       out[k] = sanitizePayloadForApi(o[k], depth + 1);
     }
-    if (keys.length > 60) out._truncado = `${keys.length - 60} chaves omitidas`;
+    if (keys.length > 40) out._truncado = `${keys.length - 40} chaves omitidas`;
     return out;
   }
   return value;
@@ -62,7 +63,7 @@ export class ActivityFeedService {
         entityType,
         entityId,
       },
-      take: 80,
+      take: 50,
       orderBy: {
         createdAt: "desc",
       },

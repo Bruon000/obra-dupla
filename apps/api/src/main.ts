@@ -26,9 +26,10 @@ async function bootstrap() {
     ],
   });
 
-  // Permite payloads JSON um pouco maiores (ex.: anexos base64)
-  app.useBodyParser("json", { limit: "15mb" });
-  app.useBodyParser("urlencoded", { extended: true, limit: "15mb" });
+  // Render free ~512MB RAM: corpo JSON grande + serialização = OOM. Limite redefinível por env.
+  const bodyLimit = process.env.JSON_BODY_LIMIT ?? "6mb";
+  app.useBodyParser("json", { limit: bodyLimit });
+  app.useBodyParser("urlencoded", { extended: true, limit: bodyLimit });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -43,7 +44,7 @@ async function bootstrap() {
   await app.listen(port, host);
   const heapMb = Math.round(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
   console.log(
-    `[heap] heap_size_limit_mb=${heapMb} (esperado ~384; se ~256, o Start no Render deve ser "npm start" em apps/api, não "node dist/main.js" sem flags)`,
+    `[heap] heap_size_limit_mb=${heapMb} (esperado ~320 no Render; se ~256, o Start deve ser "npm start" em apps/api)`,
   );
   console.log(`API rodando em http://localhost:${port}`);
   if (host === "0.0.0.0") {
